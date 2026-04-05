@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSessionUserId } from "@/lib/auth-api";
 import { connectDB } from "@/lib/mongodb";
-import { userToJson } from "@/lib/api/user-json";
 import User from "@/models/User";
 
 function escapeRegExp(s: string) {
@@ -30,6 +29,10 @@ export async function GET(request: NextRequest) {
     .lean();
 
   return NextResponse.json({
-    users: users.map((u) => userToJson(u)),
+    users: users.map((u) => ({
+      id: String(u._id),
+      name: u.name ?? "",
+      username: u.username ?? "",
+    })),
   });
 }
