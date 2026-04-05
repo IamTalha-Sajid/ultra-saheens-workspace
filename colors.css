@@ -1,0 +1,160 @@
+/**
+ * Ultra Shaheens Logo Color Palette (Legacy)
+ * Remapped to the new neutral/violet premium colorway
+ */
+
+:root {
+  /* Ultra Shaheens Colors - Remapped to Zinc and Violet/Indigo */
+  --canary: #e0e7ff;
+  /* Indigo 100 */
+  --celery: #a5b4fc;
+  /* Indigo 300 */
+  --racing-green: #09090b;
+  /* Zinc 950 */
+  --gray-nickel: #a1a1aa;
+  /* Zinc 400 */
+  --la-palma: #6366f1;
+  /* Indigo 500 (was bright green) */
+  --xanadu: #71717a;
+  /* Zinc 500 */
+  --asparagus: #8b5cf6;
+  /* Violet 500 */
+  --dark-fern: #1e1b4b;
+  /* Indigo 950 */
+  --dell: #4f46e5;
+  /* Indigo 600 */
+
+  /* RGB Values */
+  --canary-rgb: 224, 231, 255;
+  --celery-rgb: 165, 180, 252;
+  --racing-green-rgb: 9, 9, 11;
+  --gray-nickel-rgb: 161, 161, 170;
+  --la-palma-rgb: 99, 102, 241;
+  --xanadu-rgb: 113, 113, 122;
+  --asparagus-rgb: 139, 92, 246;
+  --dark-fern-rgb: 30, 27, 75;
+  --dell-rgb: 79, 70, 229;
+}
+
+/* Utility classes for quick access */
+.text-canary {
+  color: var(--canary);
+}
+
+.text-celery {
+  color: var(--celery);
+}
+
+.text-racing-green {
+  color: var(--racing-green);
+}
+
+.text-gray-nickel {
+  color: var(--gray-nickel);
+}
+
+.text-la-palma {
+  color: var(--la-palma);
+}
+
+.text-xanadu {
+  color: var(--xanadu);
+}
+
+.text-asparagus {
+  color: var(--asparagus);
+}
+
+.text-dark-fern {
+  color: var(--dark-fern);
+}
+
+.text-dell {
+  color: var(--dell);
+}
+
+.bg-canary {
+  background-color: var(--canary);
+}
+
+.bg-celery {
+  background-color: var(--celery);
+}
+
+.bg-racing-green {
+  background-color: var(--racing-green);
+}
+
+.bg-gray-nickel {
+  background-color: var(--gray-nickel);
+}
+
+.bg-la-palma {
+  background-color: var(--la-palma);
+}
+
+.bg-xanadu {
+  background-color: var(--xanadu);
+}
+
+.bg-asparagus {
+  background-color: var(--asparagus);
+}
+
+.bg-dark-fern {
+  background-color: var(--dark-fern);
+}
+
+.bg-dell {
+  background-color: var(--dell);
+}
+
+/* Prevent text selection in top bar */
+.top-bar {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  cursor: default;
+}
+
+/* Animated underline with gap */
+.underline-animated {
+  position: relative;
+}
+
+.underline-animated::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--accent);
+  transition: width 0.3s ease-in-out;
+}
+
+.underline-animated:hover::after {
+  width: 100%;
+}
+
+/* For dropdown options - make underline only span text width and use white color */
+.dropdown-option .underline-animated {
+  display: inline-block;
+}
+
+.dropdown-option .underline-animated::after {
+  width: 0;
+  background-color: white;
+}
+
+.dropdown-option .underline-animated:hover::after {
+  width: 100%;
+}
+
+/* Disabled state for dropdown options */
+.dropdown-option-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}

@@ -1,0 +1,427 @@
+@import "tailwindcss";
+@import "../colors.css";
+
+@theme inline {
+  --color-background: var(--surface-deep);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  color-scheme: dark;
+  /* ── Core surfaces (Linear/Vercel style) ── */
+  --surface-deep: #09090b;
+  /* Zinc 950 */
+  --surface-mid: #141416;
+  /* Zinc 900+ */
+  --surface-raised: #18181b;
+  /* Zinc 900 */
+  --surface-overlay: #27272a;
+  /* Zinc 800 */
+
+  /* ── Text ── */
+  --text-primary: #fafafa;
+  /* Zinc 50 */
+  --text-muted: #a1a1aa;
+  /* Zinc 400 */
+
+  /* ── Accent (Indigo) ── */
+  --accent: #6366f1;
+  /* Indigo 500 */
+  --accent-hover: #4f46e5;
+  /* Indigo 600 */
+  --accent-glow: rgba(99, 102, 241, 0.35);
+
+  /* ── Borders & Glass tokens ── */
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-border-bright: rgba(255, 255, 255, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 0.04);
+}
+
+html.dark,
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--surface-deep);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════════
+   Atmosphere background – Clean and moody
+   ═══════════════════════════════════════════════════ */
+.atmosphere-bg {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--surface-deep);
+  background-image:
+    radial-gradient(ellipse 60% 80% at 50% -20%, rgba(99, 102, 241, 0.12), transparent 50%),
+    radial-gradient(ellipse 60% 60% at 100% 100%, rgba(139, 92, 246, 0.08), transparent 50%);
+}
+
+/* ═══════════════════════════════════════════════════
+   Panels & Cards - Moving away from heavy glass
+   ═══════════════════════════════════════════════════ */
+.glass-panel {
+  background: var(--surface-mid);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+.glass-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card:hover {
+  border-color: var(--glass-border-bright);
+}
+
+.glass-card-elevated {
+  background: var(--surface-overlay);
+  border: 1px solid var(--glass-border-bright);
+  box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.7), 0 0 40px -15px var(--accent-glow);
+}
+
+.glass-toolbar {
+  background: rgba(20, 20, 22, 0.85);
+  /* Translucent Zinc */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* ═══════════════════════════════════════════════════
+   Inputs
+   ═══════════════════════════════════════════════════ */
+.glass-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--glass-border-bright);
+  background: var(--surface-deep);
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) inset;
+}
+
+.glass-input::placeholder {
+  color: var(--text-muted);
+}
+
+.glass-input:focus {
+  border-color: var(--accent);
+  background: #000;
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ═══════════════════════════════════════════════════
+   Buttons
+   ═══════════════════════════════════════════════════ */
+.glass-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  border: 1px solid var(--accent-hover);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px inset rgba(255, 255, 255, 0.2);
+}
+
+.glass-button-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 2px 8px var(--accent-glow), 0 1px 1px inset rgba(255, 255, 255, 0.2);
+}
+
+.glass-button-primary:active {
+  transform: translateY(1px);
+}
+
+.glass-button-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.glass-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border-bright);
+  background: var(--surface-raised);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.glass-button:hover {
+  background: var(--surface-overlay);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.glass-button-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.glass-button-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════
+   Pills & Nav
+   ═══════════════════════════════════════════════════ */
+.glass-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border);
+  background: var(--surface-mid);
+  padding: 0.2rem 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.glass-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.glass-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+/* Active Nav State Style if needed */
+.glass-nav-item.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════
+   Tiptap Editor styles - Cleaner
+   ═══════════════════════════════════════════════════ */
+.tiptap-editor {
+  outline: none;
+  font-size: 1rem;
+}
+
+.tiptap-editor p {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+.tiptap-editor p:first-child {
+  margin-top: 0;
+}
+
+.tiptap-editor p:last-child {
+  margin-bottom: 0;
+}
+
+.tiptap-editor h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin: 1em 0 0.5em;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.tiptap-editor h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 1em 0 0.5em;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.tiptap-editor h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1em 0 0.5em;
+  color: #f4f4f5;
+}
+
+.tiptap-editor ul {
+  list-style-type: disc;
+  margin: 0.5em 0;
+  padding-left: 1.5rem;
+}
+
+.tiptap-editor ol {
+  list-style-type: decimal;
+  margin: 0.5em 0;
+  padding-left: 1.5rem;
+}
+
+.tiptap-editor li {
+  margin: 0.25em 0;
+}
+
+.tiptap-editor blockquote {
+  margin: 1em 0;
+  padding: 0.5rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.tiptap-editor hr {
+  border: none;
+  border-top: 1px solid var(--glass-border-bright);
+  margin: 2rem 0;
+}
+
+.tiptap-editor code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.85em;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--glass-border);
+  color: #e4e4e7;
+}
+
+.tiptap-editor pre {
+  margin: 1em 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #000;
+  border: 1px solid var(--glass-border-bright);
+  overflow-x: auto;
+}
+
+.tiptap-editor pre code {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #a1a1aa;
+}
+
+.tiptap-editor a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.tiptap-editor a:hover {
+  border-color: var(--accent);
+}
+
+.tiptap-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap-editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.tiptap-editor ul[data-type="taskList"] li>label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+}
+
+.tiptap-editor ul[data-type="taskList"] li[data-checked="true"]>div {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.tiptap-editor .mention,
+.tiptap-editor span[data-type="mention"] {
+  border-radius: 0.25rem;
+  padding: 0.1em 0.4em;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-glow);
+  cursor: default;
+}
+
+.tippy-box[data-theme~="mention-dark"] {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.tiptap-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════
+   Scrollbar styling
+   ═══════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  border: 2px solid var(--surface-deep);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════
+   Selection
+   ═══════════════════════════════════════════════════ */
+::selection {
+  background: var(--accent-glow);
+  color: white;
+}
