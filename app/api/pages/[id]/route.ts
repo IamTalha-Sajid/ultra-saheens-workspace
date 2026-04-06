@@ -7,14 +7,12 @@ import { createNotificationsForNewMentions } from "@/lib/notifications/sync-ment
 import Page from "@/models/Page";
 
 async function collectDescendantIds(
-  userOid: mongoose.Types.ObjectId,
   rootId: mongoose.Types.ObjectId
 ): Promise<mongoose.Types.ObjectId[]> {
   const ids: mongoose.Types.ObjectId[] = [rootId];
   let frontier: mongoose.Types.ObjectId[] = [rootId];
   while (frontier.length > 0) {
     const children = await Page.find({
-      userId: userOid,
       parentId: { $in: frontier },
     })
       .select("_id")
@@ -54,20 +52,48 @@ export async function GET(
   }
 
   await connectDB();
-  const page = await Page.findOne({
-    _id: new mongoose.Types.ObjectId(id),
-    userId: new mongoose.Types.ObjectId(userId),
-  }).lean();
+  const page = await Page.findById(new mongoose.Types.ObjectId(id))
+    .populate("userId", "name email username")
+    .lean();
 
   if (!page) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  const u = page.userId as unknown;
+  const populated =
+    u &&
+    typeof u === "object" &&
+    u !== null &&
+    "email" in u &&
+    typeof (u as { email: unknown }).email === "string"
+      ? (u as {
+          _id: mongoose.Types.ObjectId;
+          name?: string;
+          email: string;
+          username?: string;
+        })
+      : null;
+
+  const createdBy = populated
+    ? {
+        _id: String(populated._id),
+        name: populated.name ?? "",
+        email: populated.email,
+        username: populated.username,
+      }
+    : {
+        _id: String(page.userId),
+        name: "",
+        email: "",
+      };
 
   return NextResponse.json({
     page: {
       title: page.title,
       icon: page.icon ?? "",
       content: parsePageContent(page.content),
+      createdBy,
     },
   });
 }
@@ -94,9 +120,9 @@ export async function PATCH(
 
   await connectDB();
   const pageOid = new mongoose.Types.ObjectId(id);
-  const userOid = new mongoose.Types.ObjectId(userId);
+  const editorOid = new mongoose.Types.ObjectId(userId);
 
-  const page = await Page.findOne({ _id: pageOid, userId: userOid });
+  const page = await Page.findById(pageOid);
   if (!page) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -125,7 +151,7 @@ export async function PATCH(
       newContent: body.content,
       pageId: pageOid,
       pageTitle: page.title,
-      actorId: userOid,
+      actorId: editorOid,
       actorName,
     });
   }
@@ -149,15 +175,21 @@ export async function DELETE(
   }
 
   await connectDB();
-  const userOid = new mongoose.Types.ObjectId(userId);
   const rootOid = new mongoose.Types.ObjectId(id);
 
-  const exists = await Page.findOne({ _id: rootOid, userId: userOid }).lean();
+  const exists = await Page.findById(rootOid).lean();
   if (!exists) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const toRemove = await collectDescendantIds(userOid, rootOid);
+  if (String(exists.userId) !== userId) {
+    return NextResponse.json(
+      { error: "Only the page creator can delete this page." },
+      { status: 403 }
+    );
+  }
+
+  const toRemove = await collectDescendantIds(rootOid);
   await Page.deleteMany({ _id: { $in: toRemove } });
 
   return NextResponse.json({ ok: true });

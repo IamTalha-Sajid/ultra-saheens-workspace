@@ -10,6 +10,13 @@ import {
   type ReactNode,
 } from "react";
 
+export type PageCreator = {
+  _id: string;
+  name: string;
+  email: string;
+  username?: string;
+};
+
 export type PageListItem = {
   _id: string;
   title: string;
@@ -17,6 +24,7 @@ export type PageListItem = {
   parentId: string | null;
   order: number;
   updatedAt: string;
+  createdBy: PageCreator;
 };
 
 type PagesContextValue = {

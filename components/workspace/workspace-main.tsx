@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PageEditor } from "./page-editor";
-import { usePages } from "./pages-context";
+import { usePages, type PageCreator } from "./pages-context";
 
 type LoadedPage = {
   title: string;
   icon: string;
   content: unknown;
+  createdBy: PageCreator;
 };
 
 export function WorkspaceMain() {
@@ -66,13 +67,19 @@ export function WorkspaceMain() {
           return;
         }
         const data = (await res.json()) as {
-          page: { title: string; icon?: string; content: unknown };
+          page: {
+            title: string;
+            icon?: string;
+            content: unknown;
+            createdBy: PageCreator;
+          };
         };
         if (!cancelled) {
           setLoaded({
             title: data.page.title,
             icon: data.page.icon ?? "",
             content: data.page.content,
+            createdBy: data.page.createdBy,
           });
         }
       } catch {
@@ -216,6 +223,7 @@ export function WorkspaceMain() {
         initialTitle={loaded.title}
         initialIcon={loaded.icon}
         initialContent={loaded.content}
+        createdBy={loaded.createdBy}
       />
     </div>
   );

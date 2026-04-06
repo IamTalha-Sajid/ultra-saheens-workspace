@@ -5,14 +5,26 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SignOutButton } from "@/components/sign-out-button";
 import { useFeedback } from "@/components/ui/feedback-provider";
-import { usePages } from "./pages-context";
+import { usePages, type PageCreator } from "./pages-context";
 import { buildPageTree, type PageTreeNode } from "./page-tree-utils";
 import { NotificationPanel } from "./notification-panel";
+
+function pageCreatorLabel(c: PageCreator) {
+  const n = c.name?.trim();
+  if (n) return `by ${n}`;
+  const e = c.email?.trim();
+  if (e) {
+    const at = e.indexOf("@");
+    return `by ${at > 0 ? e.slice(0, at) : e}`;
+  }
+  return "Unknown creator";
+}
 
 function TreeRows({
   nodes,
   depth,
   selectedId,
+  currentUserId,
   onSelect,
   onAddChild,
   onDelete,
@@ -20,6 +32,7 @@ function TreeRows({
   nodes: PageTreeNode[];
   depth: number;
   selectedId: string | null;
+  currentUserId: string;
   onSelect: (id: string) => void;
   onAddChild: (parentId: string) => void;
   onDelete: (id: string, title: string) => void;
@@ -37,14 +50,19 @@ function TreeRows({
                 : "hover:bg-white/[0.04]"
                 }`}
             >
-              <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex min-w-0 flex-1 items-start gap-2">
                 <span
                   className="flex h-7 w-7 shrink-0 items-center justify-center text-[1.1rem] leading-none"
                   aria-hidden
                 >
                   {node.icon ? node.icon : null}
                 </span>
-                <span className="truncate">{node.title || "Untitled"}</span>
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block truncate">{node.title || "Untitled"}</span>
+                  <span className="block truncate text-[10px] font-medium text-[var(--text-muted)]">
+                    {pageCreatorLabel(node.createdBy)}
+                  </span>
+                </span>
               </span>
             </button>
             <button
@@ -58,23 +76,26 @@ function TreeRows({
             >
               +
             </button>
-            <button
-              type="button"
-              title="Delete page"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(node._id, node.title);
-              }}
-              className="shrink-0 rounded p-1 text-[var(--xanadu)] opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
-            >
-              ×
-            </button>
+            {node.createdBy._id === currentUserId ? (
+              <button
+                type="button"
+                title="Delete page"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(node._id, node.title);
+                }}
+                className="shrink-0 rounded p-1 text-[var(--xanadu)] opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
+              >
+                ×
+              </button>
+            ) : null}
           </div>
           {node.children.length > 0 ? (
             <TreeRows
               nodes={node.children}
               depth={depth + 1}
               selectedId={selectedId}
+              currentUserId={currentUserId}
               onSelect={onSelect}
               onAddChild={onAddChild}
               onDelete={onDelete}
@@ -87,11 +108,13 @@ function TreeRows({
 }
 
 export function PageSidebar({
+  currentUserId,
   email,
   displayName,
   username,
   designation,
 }: {
+  currentUserId: string;
   email: string;
   displayName: string;
   username?: string;
@@ -202,6 +225,7 @@ export function PageSidebar({
             nodes={tree}
             depth={0}
             selectedId={selectedId}
+            currentUserId={currentUserId}
             onSelect={goPage}
             onAddChild={(pid) => void handleCreatePage(pid)}
             onDelete={onDelete}

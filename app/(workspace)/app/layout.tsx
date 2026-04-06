@@ -12,6 +12,7 @@ export default async function WorkspaceLayout({
 
   return (
     <WorkspaceShell
+      userId={session.user.id}
       email={session.user.email}
       displayName={session.user.name?.trim() || session.user.email}
       username={session.user.username}

@@ -6,6 +6,7 @@ const DEFAULT_DOC = JSON.stringify({
 });
 
 export interface PageDoc {
+  /** User who created the page (workspace pages are visible to all members). */
   userId: Types.ObjectId;
   title: string;
   /** Single emoji (or ZWJ sequence), shown beside title — not part of title text. */

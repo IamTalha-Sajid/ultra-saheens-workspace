@@ -4,14 +4,44 @@ import { getSessionUserId } from "@/lib/auth-api";
 import { connectDB } from "@/lib/mongodb";
 import Page from "@/models/Page";
 
-function listItem(page: {
+type PopulatedCreator = {
   _id: mongoose.Types.ObjectId;
-  title: string;
-  icon: string;
-  parentId: mongoose.Types.ObjectId | null;
-  order: number;
-  updatedAt: Date;
+  name?: string;
+  email: string;
+  username?: string;
+};
+
+function createdByFromPage(p: {
+  userId: PopulatedCreator | mongoose.Types.ObjectId | null | undefined;
 }) {
+  const u = p.userId;
+  if (u && typeof u === "object" && "email" in u) {
+    return {
+      _id: String(u._id),
+      name: u.name ?? "",
+      email: u.email,
+      username: u.username,
+    };
+  }
+  return {
+    _id: u ? String(u) : "",
+    name: "",
+    email: "",
+    username: undefined as string | undefined,
+  };
+}
+
+function listItem(
+  page: {
+    _id: mongoose.Types.ObjectId;
+    title: string;
+    icon: string;
+    parentId: mongoose.Types.ObjectId | null;
+    order: number;
+    updatedAt: Date;
+    userId: PopulatedCreator | mongoose.Types.ObjectId;
+  }
+) {
   return {
     _id: String(page._id),
     title: page.title,
@@ -19,6 +49,7 @@ function listItem(page: {
     parentId: page.parentId ? String(page.parentId) : null,
     order: page.order,
     updatedAt: page.updatedAt.toISOString(),
+    createdBy: createdByFromPage(page),
   };
 }
 
@@ -29,9 +60,9 @@ export async function GET() {
   }
 
   await connectDB();
-  const oid = new mongoose.Types.ObjectId(userId);
-  const pages = await Page.find({ userId: oid })
+  const pages = await Page.find({})
     .sort({ parentId: 1, order: 1, updatedAt: -1 })
+    .populate("userId", "name email username")
     .lean();
 
   return NextResponse.json({
@@ -43,6 +74,7 @@ export async function GET() {
         parentId: p.parentId ?? null,
         order: p.order,
         updatedAt: p.updatedAt,
+        userId: p.userId as PopulatedCreator | mongoose.Types.ObjectId,
       })
     ),
   });
@@ -71,13 +103,13 @@ export async function POST(request: Request) {
   const userOid = new mongoose.Types.ObjectId(userId);
 
   if (parentId) {
-    const parent = await Page.findOne({ _id: parentId, userId: userOid }).lean();
+    const parent = await Page.findById(parentId).lean();
     if (!parent) {
       return NextResponse.json({ error: "Parent not found" }, { status: 404 });
     }
   }
 
-  const maxOrder = await Page.findOne({ userId: userOid, parentId })
+  const maxOrder = await Page.findOne({ parentId })
     .sort({ order: -1 })
     .select("order")
     .lean();

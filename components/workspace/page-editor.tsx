@@ -17,12 +17,23 @@ import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorToolbar } from "./editor-toolbar";
-import { usePages } from "./pages-context";
+import { usePages, type PageCreator } from "./pages-context";
 import { createUserMentionExtension } from "./user-mention-extension";
 import { EmojiPickerModal } from "./emoji-picker-modal";
 
 function defaultDoc() {
   return { type: "doc", content: [{ type: "paragraph" }] };
+}
+
+function formatCreatedByLabel(c: PageCreator) {
+  const n = c.name?.trim();
+  if (n) return n;
+  const e = c.email?.trim();
+  if (e) {
+    const at = e.indexOf("@");
+    return at > 0 ? e.slice(0, at) : e;
+  }
+  return "Unknown";
 }
 
 function EmojiFaceIcon({ className }: { className?: string }) {
@@ -51,11 +62,13 @@ export function PageEditor({
   initialTitle,
   initialIcon,
   initialContent,
+  createdBy,
 }: {
   pageId: string;
   initialTitle: string;
   initialIcon: string;
   initialContent: unknown;
+  createdBy: PageCreator;
 }) {
   const { refresh } = usePages();
   const [title, setTitle] = useState(initialTitle);
@@ -260,38 +273,49 @@ export function PageEditor({
   return (
     <div ref={containerRef} className="flex min-h-0 flex-1 flex-col gap-4 px-4 pt-3 md:gap-5 md:px-6">
       <header className="glass-panel flex shrink-0 flex-wrap items-center gap-3 rounded-2xl border border-white/[0.1] px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] md:gap-4 md:px-5">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 md:gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2 md:gap-3">
           <div
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.05] text-2xl leading-none shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset] backdrop-blur-sm"
             aria-hidden={!icon}
           >
             {icon ? icon : null}
           </div>
-          {isEditing ? (
-            <>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="glass-input min-w-0 flex-1 border-0 bg-transparent py-1 text-sm font-semibold text-white placeholder:text-[var(--text-muted)] md:text-base focus:bg-transparent focus:shadow-none focus:ring-0"
-                placeholder="Untitled"
-                aria-label="Page title"
-              />
-              <button
-                type="button"
-                onClick={() => setEmojiOpen(true)}
-                className="glass-button-ghost shrink-0 p-2.5"
-                title="Choose page icon"
-                aria-label="Choose page icon"
-              >
-                <EmojiFaceIcon className="h-5 w-5 text-[var(--gray-nickel)]" />
-              </button>
-            </>
-          ) : (
-            <h1 className="min-w-0 flex-1 truncate py-1 text-sm font-semibold text-white md:text-base">
-              {title.trim() || "Untitled"}
-            </h1>
-          )}
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            {isEditing ? (
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="glass-input min-w-0 flex-1 border-0 bg-transparent py-1 text-sm font-semibold text-white placeholder:text-[var(--text-muted)] md:text-base focus:bg-transparent focus:shadow-none focus:ring-0"
+                  placeholder="Untitled"
+                  aria-label="Page title"
+                />
+                <button
+                  type="button"
+                  onClick={() => setEmojiOpen(true)}
+                  className="glass-button-ghost shrink-0 p-2.5"
+                  title="Choose page icon"
+                  aria-label="Choose page icon"
+                >
+                  <EmojiFaceIcon className="h-5 w-5 text-[var(--gray-nickel)]" />
+                </button>
+              </div>
+            ) : (
+              <h1 className="min-w-0 truncate py-1 text-sm font-semibold text-white md:text-base">
+                {title.trim() || "Untitled"}
+              </h1>
+            )}
+            <p className="text-[11px] text-[var(--text-muted)]">
+              Created by{" "}
+              <span className="font-medium text-white/75">
+                {formatCreatedByLabel(createdBy)}
+              </span>
+              {createdBy.email ? (
+                <span className="text-white/35"> · {createdBy.email}</span>
+              ) : null}
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {saveState === "saving" ? (
