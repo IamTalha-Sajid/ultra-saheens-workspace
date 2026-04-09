@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import Ticket from "@/models/Ticket";
 import type { TicketDoc } from "@/models/Ticket";
+import "@/models/User"; // ensure User schema is registered for populate()
 
 type PopulatedUser = {
   _id: mongoose.Types.ObjectId;
@@ -13,6 +14,10 @@ type PopulatedUser = {
   username?: string;
 };
 
+function isPopulatedUser(u: unknown): u is PopulatedUser {
+  return typeof u === "object" && u !== null && "email" in u;
+}
+
 function serializeTicket(
   t: TicketDoc & {
     assigneeId?: PopulatedUser | null;
@@ -20,6 +25,10 @@ function serializeTicket(
   }
 ) {
   const assignee = t.assigneeId;
+  const creator = isPopulatedUser(t.creatorId)
+    ? userToJson(t.creatorId)
+    : { _id: String(t.creatorId), name: "", email: "" };
+
   return {
     _id: String(t._id),
     title: t.title,
@@ -29,8 +38,8 @@ function serializeTicket(
     type: t.type,
     labels: t.labels,
     estimate: t.estimate,
-    assigneeId: assignee ? userToJson(assignee) : undefined,
-    creatorId: userToJson(t.creatorId),
+    assigneeId: isPopulatedUser(assignee) ? userToJson(assignee) : undefined,
+    creatorId: creator,
     createdAt: t.createdAt.toISOString(),
   };
 }

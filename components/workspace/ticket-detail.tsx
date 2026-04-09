@@ -33,7 +33,7 @@ type Ticket = {
     type: "Task" | "Bug" | "Story" | "Epic";
     labels: string[];
     estimate: string;
-    assigneeId?: User;
+    assigneeId?: User | string | null;
     creatorId: User;
     createdAt: string;
 };
@@ -151,11 +151,11 @@ const TYPE_COLORS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
     Todo: "bg-indigo-500/15 text-indigo-300 border-indigo-500/25",
     "In progress": "bg-amber-500/15 text-amber-300 border-amber-500/25",
-    Blocked: "bg-rose-500/15 text-rose-300 border-rose-500/25",
     Done: "bg-emerald-500/15 text-emerald-300 border-emerald-500/25",
+    Blocked: "bg-rose-500/15 text-rose-300 border-rose-500/25",
 };
 
-const COLUMNS = ["Todo", "In progress", "Blocked", "Done"];
+const COLUMNS = ["Todo", "In progress", "Done", "Blocked"];
 
 /* ── Component ── */
 
@@ -219,14 +219,9 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
         void fetchTicket();
     }, [ticketId]);
 
-    const updateField = async (field: keyof Ticket, value: any) => {
+    const updateField = (field: keyof Ticket, value: any) => {
         if (!ticket) return;
         setTicket({ ...ticket, [field]: value });
-        await fetch(`/api/tickets/${ticketId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ [field]: value }),
-        });
     };
 
     const handleSaveAll = useCallback(async () => {
@@ -243,7 +238,7 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                 type: ticket.type,
                 labels: ticket.labels,
                 estimate: ticket.estimate,
-                assigneeId: ticket.assigneeId?._id || null,
+                assigneeId: typeof ticket.assigneeId === 'string' ? ticket.assigneeId || null : ticket.assigneeId?._id || null,
             }),
         });
         if (res.ok) {
@@ -334,6 +329,12 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                         <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${STATUS_COLORS[ticket.status] ?? STATUS_COLORS.Todo}`}>
                             {ticket.status}
                         </span>
+                        {ticket.estimate && (
+                            <span className="flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-rose-300 shadow-sm" title="Deadline">
+                                <ClockIcon className="h-3.5 w-3.5" />
+                                {new Date(ticket.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                            </span>
+                        )}
 
                         {/* Save Button */}
                         <button
@@ -368,7 +369,6 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                     className="mt-2 w-full bg-transparent text-3xl font-bold tracking-tight text-white outline-none ring-0 placeholder-[var(--text-muted)] transition-colors focus:text-[var(--accent)] md:text-4xl"
                     value={ticket.title}
                     onChange={(e) => setTicket({ ...ticket, title: e.target.value })}
-                    onBlur={(e) => updateField("title", e.target.value)}
                     placeholder="Enter issue summary…"
                 />
 
@@ -380,7 +380,6 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                         placeholder="What needs to be done? Add all details here…"
                         value={ticket.description}
                         onChange={(e) => setTicket({ ...ticket, description: e.target.value })}
-                        onBlur={(e) => updateField("description", e.target.value)}
                     />
                 </div>
 
@@ -470,7 +469,7 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                     {/* Assignee */}
                     <DetailRow icon={<UserIcon className="h-4 w-4" />} label="Assignee">
                         <CustomSelect
-                            value={ticket.assigneeId?._id || ""}
+                            value={typeof ticket.assigneeId === 'string' ? ticket.assigneeId : ticket.assigneeId?._id || ""}
                             options={[
                                 { value: "", label: "Unassigned" },
                                 ...users.map(u => ({ value: u._id, label: u.name || u.email.split("@")[0] }))
@@ -515,19 +514,17 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                     {/* Deadline */}
                     <DetailRow icon={<ClockIcon className="h-4 w-4" />} label="Deadline">
                         <input
-                            type="datetime-local"
-                            value={ticket.estimate}
+                            type="date"
+                            value={ticket.estimate ? ticket.estimate.split('T')[0] : ""}
                             onChange={(e) => {
                                 setTicket({ ...ticket, estimate: e.target.value });
-                                updateField("estimate", e.target.value);
                             }}
                             className="glass-input cursor-pointer py-2.5 text-sm [color-scheme:dark]"
                         />
                         {ticket.estimate && (
                             <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-                                {new Date(ticket.estimate).toLocaleString(undefined, {
-                                    weekday: "short", month: "short", day: "numeric",
-                                    hour: "numeric", minute: "2-digit",
+                                {new Date(ticket.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, {
+                                    weekday: "short", month: "short", day: "numeric"
                                 })}
                             </p>
                         )}
