@@ -10,6 +10,7 @@ interface NotifierParams {
     ticketTitle: string;
     ticketId?: mongoose.Types.ObjectId | string;
     pageId?: mongoose.Types.ObjectId | string;
+    content?: string;
     type: NotificationType;
 }
 
@@ -19,6 +20,7 @@ export async function sendEmailNotification({
     ticketTitle,
     ticketId,
     pageId,
+    content,
     type
 }: NotifierParams) {
     try {
@@ -73,6 +75,12 @@ export async function sendEmailNotification({
                     <strong>${actorName}</strong> ${actionText}.
                 </p>
 
+                ${content ? `
+                <div style="background-color: #f9fafb; border-left: 4px solid #7c3aed; padding: 16px; margin-bottom: 24px; font-style: italic; color: #4b5563; border-radius: 4px;">
+                    ${content}
+                </div>
+                ` : ''}
+
                 <div style="margin-bottom: 32px;">
                     <a href="${actionLink}" style="display: inline-block; background-color: #7c3aed; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
                         View in Workspace
@@ -92,7 +100,7 @@ export async function sendEmailNotification({
             to: recipient.email,
             subject,
             html,
-            text: `${actorName} ${actionText.replace(/<b>|<\/b>/g, '')}. View at: ${actionLink}`,
+            text: `${actorName} ${actionText.replace(/<b>|<\/b>/g, '')}${content ? `: "${content}"` : ''}. View at: ${actionLink}`,
         });
 
         console.log(`[EmailNotifier] Success: Email sent to ${recipient.email}`);

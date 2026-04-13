@@ -5,6 +5,7 @@ import {
   collectMentionIdSetFromJsonString,
   collectMentionIdsAndLabels,
 } from "@/lib/tiptap/collect-mentions";
+import { tiptapToPlainText } from "@/lib/tiptap/tiptap-to-text";
 import { sendEmailNotification } from "./email-notifier";
 
 export async function createNotificationsForNewMentions(params: {
@@ -54,6 +55,7 @@ export async function createNotificationsForNewMentions(params: {
     await MentionNotification.insertMany(docs);
 
     // Send Email Alerts
+    const pageText = tiptapToPlainText(params.newContent);
     await Promise.all(
       added
         .filter((id) => valid.has(id))
@@ -63,7 +65,8 @@ export async function createNotificationsForNewMentions(params: {
             actorName: params.actorName,
             ticketTitle: params.pageTitle,
             pageId: params.pageId,
-            type: "mention"
+            type: "mention",
+            content: pageText
           })
         )
     );

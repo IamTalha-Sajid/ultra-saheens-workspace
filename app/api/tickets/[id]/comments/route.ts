@@ -5,6 +5,7 @@ import { getSessionUserId } from "@/lib/auth-api";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import { collectMentionIdsAndLabels } from "@/lib/tiptap/collect-mentions";
+import { tiptapToPlainText } from "@/lib/tiptap/tiptap-to-text";
 import { sendEmailNotification } from "@/lib/notifications/email-notifier";
 import MentionNotification from "@/models/MentionNotification";
 import Ticket from "@/models/Ticket";
@@ -90,6 +91,14 @@ export async function POST(
     if (docs.length > 0) {
       await MentionNotification.insertMany(docs);
       
+      let commentText = "";
+      try {
+        const json = JSON.parse(content);
+        commentText = tiptapToPlainText(json);
+      } catch {
+        commentText = content;
+      }
+
       // Send Email Alerts for each mention
       await Promise.all(
         mentionedIds
@@ -100,7 +109,8 @@ export async function POST(
               actorName,
               ticketTitle: ticket.title,
               ticketId: ticketOid,
-              type: "ticket_comment"
+              type: "ticket_comment",
+              content: commentText
             })
           )
       );

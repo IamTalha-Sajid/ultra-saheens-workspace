@@ -5,6 +5,7 @@ import { getSessionUserId } from "@/lib/auth-api";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import { collectMentionIdsAndLabels } from "@/lib/tiptap/collect-mentions";
+import { tiptapToPlainText } from "@/lib/tiptap/tiptap-to-text";
 import MentionNotification from "@/models/MentionNotification";
 import { sendEmailNotification } from "@/lib/notifications/email-notifier";
 import Ticket from "@/models/Ticket";
@@ -272,6 +273,15 @@ export async function PATCH(
 
       if (docs.length > 0) {
         await MentionNotification.insertMany(docs);
+        
+        let descText = "";
+        try {
+          const json = JSON.parse(ticket.description);
+          descText = tiptapToPlainText(json);
+        } catch {
+          descText = ticket.description;
+        }
+
         await Promise.all(
           docs.map(doc => 
             sendEmailNotification({
@@ -279,7 +289,8 @@ export async function PATCH(
               actorName,
               ticketTitle: ticket.title,
               ticketId: ticket._id,
-              type: "mention"
+              type: "mention",
+              content: descText
             })
           )
         );
