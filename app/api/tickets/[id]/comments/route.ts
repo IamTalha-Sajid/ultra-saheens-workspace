@@ -5,6 +5,7 @@ import { getSessionUserId } from "@/lib/auth-api";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import { collectMentionIdsAndLabels } from "@/lib/tiptap/collect-mentions";
+import { sendEmailNotification } from "@/lib/notifications/email-notifier";
 import MentionNotification from "@/models/MentionNotification";
 import Ticket from "@/models/Ticket";
 import TicketComment from "@/models/TicketComment";
@@ -88,6 +89,19 @@ export async function POST(
       }));
     if (docs.length > 0) {
       await MentionNotification.insertMany(docs);
+      
+      // Send Email Alerts for each mention
+      mentionedIds
+        .filter((mid) => valid.has(mid))
+        .forEach((mid) => {
+          void sendEmailNotification({
+            recipientId: new mongoose.Types.ObjectId(mid),
+            actorName,
+            ticketTitle: ticket.title,
+            ticketId: ticketOid,
+            type: "ticket_comment"
+          });
+        });
     }
   }
 

@@ -4,7 +4,9 @@ import { auth } from "@/auth";
 import { getSessionUserId } from "@/lib/auth-api";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
+import { collectMentionIdsAndLabels } from "@/lib/tiptap/collect-mentions";
 import MentionNotification from "@/models/MentionNotification";
+import { sendEmailNotification } from "@/lib/notifications/email-notifier";
 import Ticket from "@/models/Ticket";
 import TicketComment from "@/models/TicketComment";
 import User from "@/models/User";
@@ -137,6 +139,7 @@ export async function PATCH(
     const t = String(body.title).trim();
     if (t) ticket.title = t;
   }
+  const oldDescription = ticket.description;
   if (body.description !== undefined) {
     ticket.description = String(body.description);
   }
@@ -215,6 +218,71 @@ export async function PATCH(
       type: "ticket_assigned",
       ticketId: ticket._id,
     });
+
+    // Send Email Alert
+    void sendEmailNotification({
+      recipientId: new mongoose.Types.ObjectId(nextAssignee),
+      actorName,
+      ticketTitle: ticket.title,
+      ticketId: ticket._id,
+      type: "ticket_assigned"
+    });
+  }
+
+  // Handle Mentions in Description (only if changed)
+  if (ticket.description !== oldDescription) {
+    let oldIds = new Set<string>();
+    let newMap = new Map<string, string>();
+    try {
+      if (oldDescription) {
+        const oldJson = JSON.parse(oldDescription);
+        const oldIdentities = collectMentionIdsAndLabels(oldJson);
+        oldIds = new Set(oldIdentities.keys());
+      }
+      if (ticket.description) {
+        const newJson = JSON.parse(ticket.description);
+        newMap = collectMentionIdsAndLabels(newJson);
+      }
+    } catch { /* not JSON */ }
+
+    const addedIds = [...newMap.keys()].filter(
+      (mid) => !oldIds.has(mid) && mid !== userId && mongoose.Types.ObjectId.isValid(mid)
+    );
+
+    if (addedIds.length > 0) {
+      const oids = addedIds.map((mid) => new mongoose.Types.ObjectId(mid));
+      const validUsers = await User.find({ _id: { $in: oids } }).select("_id").lean();
+      const valid = new Set(validUsers.map((u) => String(u._id)));
+      
+      const session = await auth();
+      const actorName = session?.user?.name?.trim() || session?.user?.email?.trim() || "Someone";
+
+      const docs = addedIds
+        .filter((mid) => valid.has(mid))
+        .map((mid) => ({
+          recipientId: new mongoose.Types.ObjectId(mid),
+          actorId: new mongoose.Types.ObjectId(userId),
+          pageTitle: ticket.title,
+          mentionLabel: newMap.get(mid) ?? "",
+          actorName,
+          read: false,
+          type: "mention" as const,
+          ticketId: ticket._id,
+        }));
+
+      if (docs.length > 0) {
+        await MentionNotification.insertMany(docs);
+        docs.forEach(doc => {
+          void sendEmailNotification({
+            recipientId: doc.recipientId,
+            actorName,
+            ticketTitle: ticket.title,
+            ticketId: ticket._id,
+            type: "mention"
+          });
+        });
+      }
+    }
   }
 
   const populated = await Ticket.findById(ticket._id)

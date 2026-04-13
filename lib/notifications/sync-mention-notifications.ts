@@ -5,6 +5,7 @@ import {
   collectMentionIdSetFromJsonString,
   collectMentionIdsAndLabels,
 } from "@/lib/tiptap/collect-mentions";
+import { sendEmailNotification } from "./email-notifier";
 
 export async function createNotificationsForNewMentions(params: {
   previousContentJson: string;
@@ -51,5 +52,18 @@ export async function createNotificationsForNewMentions(params: {
 
   if (docs.length > 0) {
     await MentionNotification.insertMany(docs);
+
+    // Send Email Alerts
+    added
+      .filter((id) => valid.has(id))
+      .forEach((recipientId) => {
+        void sendEmailNotification({
+          recipientId: new mongoose.Types.ObjectId(recipientId),
+          actorName: params.actorName,
+          ticketTitle: params.pageTitle,
+          pageId: params.pageId,
+          type: "mention"
+        });
+      });
   }
 }
