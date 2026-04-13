@@ -54,16 +54,18 @@ export async function createNotificationsForNewMentions(params: {
     await MentionNotification.insertMany(docs);
 
     // Send Email Alerts
-    added
-      .filter((id) => valid.has(id))
-      .forEach((recipientId) => {
-        void sendEmailNotification({
-          recipientId: new mongoose.Types.ObjectId(recipientId),
-          actorName: params.actorName,
-          ticketTitle: params.pageTitle,
-          pageId: params.pageId,
-          type: "mention"
-        });
-      });
+    await Promise.all(
+      added
+        .filter((id) => valid.has(id))
+        .map((recipientId) => 
+          sendEmailNotification({
+            recipientId: new mongoose.Types.ObjectId(recipientId),
+            actorName: params.actorName,
+            ticketTitle: params.pageTitle,
+            pageId: params.pageId,
+            type: "mention"
+          })
+        )
+    );
   }
 }

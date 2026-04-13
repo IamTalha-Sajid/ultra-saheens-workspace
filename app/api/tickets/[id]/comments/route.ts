@@ -91,17 +91,19 @@ export async function POST(
       await MentionNotification.insertMany(docs);
       
       // Send Email Alerts for each mention
-      mentionedIds
-        .filter((mid) => valid.has(mid))
-        .forEach((mid) => {
-          void sendEmailNotification({
-            recipientId: new mongoose.Types.ObjectId(mid),
-            actorName,
-            ticketTitle: ticket.title,
-            ticketId: ticketOid,
-            type: "ticket_comment"
-          });
-        });
+      await Promise.all(
+        mentionedIds
+          .filter((mid) => valid.has(mid))
+          .map((mid) => 
+            sendEmailNotification({
+              recipientId: new mongoose.Types.ObjectId(mid),
+              actorName,
+              ticketTitle: ticket.title,
+              ticketId: ticketOid,
+              type: "ticket_comment"
+            })
+          )
+      );
     }
   }
 

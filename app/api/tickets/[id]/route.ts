@@ -220,7 +220,7 @@ export async function PATCH(
     });
 
     // Send Email Alert
-    void sendEmailNotification({
+    await sendEmailNotification({
       recipientId: new mongoose.Types.ObjectId(nextAssignee),
       actorName,
       ticketTitle: ticket.title,
@@ -272,15 +272,17 @@ export async function PATCH(
 
       if (docs.length > 0) {
         await MentionNotification.insertMany(docs);
-        docs.forEach(doc => {
-          void sendEmailNotification({
-            recipientId: doc.recipientId,
-            actorName,
-            ticketTitle: ticket.title,
-            ticketId: ticket._id,
-            type: "mention"
-          });
-        });
+        await Promise.all(
+          docs.map(doc => 
+            sendEmailNotification({
+              recipientId: doc.recipientId,
+              actorName,
+              ticketTitle: ticket.title,
+              ticketId: ticket._id,
+              type: "mention"
+            })
+          )
+        );
       }
     }
   }

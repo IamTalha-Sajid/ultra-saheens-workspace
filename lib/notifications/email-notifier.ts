@@ -22,9 +22,19 @@ export async function sendEmailNotification({
     type
 }: NotifierParams) {
     try {
+        console.log(`[EmailNotifier] Processing ${type} notification for recipientId: ${recipientId}`);
         const recipient = await User.findById(recipientId).select("email name").lean();
-        if (!recipient || !recipient.email) return;
+        
+        if (!recipient) {
+            console.warn(`[EmailNotifier] Recipient not found: ${recipientId}`);
+            return;
+        }
+        if (!recipient.email) {
+            console.warn(`[EmailNotifier] Recipient has no email: ${recipient.name || recipientId}`);
+            return;
+        }
 
+        console.log(`[EmailNotifier] Sending to: ${recipient.email}`);
         const baseUrl = process.env.AUTH_URL || "http://localhost:3000";
         let actionLink = `${baseUrl}/app/board`;
         
@@ -85,7 +95,9 @@ export async function sendEmailNotification({
             text: `${actorName} ${actionText.replace(/<b>|<\/b>/g, '')}. View at: ${actionLink}`,
         });
 
+        console.log(`[EmailNotifier] Success: Email sent to ${recipient.email}`);
+
     } catch (error) {
-        console.error("Failed to send email notification:", error);
+        console.error("[EmailNotifier] Error:", error);
     }
 }
