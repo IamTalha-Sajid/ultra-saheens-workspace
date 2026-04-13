@@ -1,6 +1,7 @@
 import { Schema, models, model, Document, Types } from "mongoose";
 
 export interface TicketDoc extends Document {
+    sid: number;
     title: string;
     description: string;
     status: "Todo" | "In progress" | "Blocked" | "Done";
@@ -18,6 +19,7 @@ export interface TicketDoc extends Document {
 
 const TicketSchema = new Schema<TicketDoc>(
     {
+        sid: { type: Number, required: true, index: true },
         title: { type: String, required: true },
         description: { type: String, default: "" },
         status: {

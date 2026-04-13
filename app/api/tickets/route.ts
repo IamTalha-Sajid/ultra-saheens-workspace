@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import Ticket from "@/models/Ticket";
 import type { TicketDoc } from "@/models/Ticket";
+import Counter from "@/models/Counter";
 import "@/models/User"; // ensure User schema is registered for populate()
 
 type PopulatedUser = {
@@ -31,6 +32,7 @@ function serializeTicket(
 
   return {
     _id: String(t._id),
+    sid: t.sid,
     title: t.title,
     description: t.description,
     status: t.status,
@@ -76,6 +78,7 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     title?: string;
     status?: TicketDoc["status"];
+    assigneeId?: string;
   };
   const title = String(body.title ?? "").trim();
   if (!title) {
@@ -88,14 +91,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
+  const assigneeId = body.assigneeId && mongoose.Types.ObjectId.isValid(body.assigneeId)
+    ? new mongoose.Types.ObjectId(body.assigneeId)
+    : undefined;
+
   await connectDB();
   const creatorOid = new mongoose.Types.ObjectId(userId);
 
+  // Get next sequence ID
+  const counter = await Counter.findOneAndUpdate(
+    { name: "ticket" },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+
   const doc = await Ticket.create({
+    sid: counter.seq,
     title,
     description: "",
     status,
     creatorId: creatorOid,
+    assigneeId,
   });
 
   const populated = await Ticket.findById(doc._id)

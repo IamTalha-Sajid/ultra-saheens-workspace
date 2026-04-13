@@ -26,6 +26,7 @@ type Comment = {
 
 type Ticket = {
     _id: string;
+    sid: number;
     title: string;
     description: string;
     status: "Todo" | "In progress" | "Blocked" | "Done";
@@ -159,7 +160,7 @@ const COLUMNS = ["Todo", "In progress", "Done", "Blocked"];
 
 /* ── Component ── */
 
-export function TicketDetail({ ticketId }: { ticketId: string }) {
+export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?: () => void }) {
     const router = useRouter();
     const { data: session } = useSession();
     const { confirm } = useFeedback();
@@ -199,6 +200,7 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                 const t = data.ticket;
                 setTicket({
                     ...t,
+                    sid: t.sid,
                     labels: t.labels ?? [],
                     priority: t.priority ?? "Medium",
                     type: t.type ?? "Task",
@@ -299,28 +301,46 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                 <p className="text-sm text-[var(--text-muted)]">
                     The ticket you are looking for does not exist or has been deleted.
                 </p>
-                <Link href="/app/board" className="glass-button-primary w-auto px-6">
-                    Return to Board
-                </Link>
+                {onClose ? (
+                    <button onClick={onClose} className="glass-button-primary w-auto px-6">
+                        Close
+                    </button>
+                ) : (
+                    <Link href="/app/board" className="glass-button-primary w-auto px-6">
+                        Return to Board
+                    </Link>
+                )}
             </div>
         );
     }
 
     return (
-        <div className="flex h-full w-full flex-col gap-6 overflow-y-auto pb-6 lg:flex-row">
+        <div className="flex h-full w-full flex-col gap-4 overflow-y-auto pb-4 lg:flex-row lg:gap-6 lg:pb-6">
             {/* ── Main Content ── */}
-            <div className="glass-card flex flex-1 flex-col gap-6 rounded-3xl p-6 shadow-2xl md:p-8 lg:p-10">
+            <div className="glass-card flex flex-1 flex-col gap-6 rounded-3xl p-4 shadow-2xl sm:p-6 md:p-8 lg:p-10">
                 {/* Top Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Link
-                        href="/app/board"
-                        className="group flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-white"
-                    >
-                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 transition-colors group-hover:bg-white/10">
-                            <ArrowLeftIcon className="h-4 w-4" />
-                        </span>
-                        Back to Board
-                    </Link>
+                    {onClose ? (
+                        <button
+                            onClick={onClose}
+                            className="group flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-white"
+                        >
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 transition-colors group-hover:bg-white/10">
+                                <span className="text-lg leading-none">×</span>
+                            </span>
+                            Close Detail
+                        </button>
+                    ) : (
+                        <Link
+                            href="/app/board"
+                            className="group flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-white"
+                        >
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 transition-colors group-hover:bg-white/10">
+                                <ArrowLeftIcon className="h-4 w-4" />
+                            </span>
+                            Back to Board
+                        </Link>
+                    )}
 
                     <div className="flex items-center gap-2">
                         <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${TYPE_COLORS[ticket.type] ?? TYPE_COLORS.Task}`}>
@@ -364,13 +384,18 @@ export function TicketDetail({ ticketId }: { ticketId: string }) {
                 </div>
 
                 {/* Title */}
-                <input
-                    type="text"
-                    className="mt-2 w-full bg-transparent text-3xl font-bold tracking-tight text-white outline-none ring-0 placeholder-[var(--text-muted)] transition-colors focus:text-[var(--accent)] md:text-4xl"
-                    value={ticket.title}
-                    onChange={(e) => setTicket({ ...ticket, title: e.target.value })}
-                    placeholder="Enter issue summary…"
-                />
+                <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-black tracking-widest text-violet-400/80">US-{ticket.sid}</span>
+                    </div>
+                    <input
+                        type="text"
+                        className="w-full bg-transparent text-3xl font-bold tracking-tight text-white outline-none ring-0 placeholder-[var(--text-muted)] transition-colors focus:text-[var(--accent)] md:text-4xl"
+                        value={ticket.title}
+                        onChange={(e) => setTicket({ ...ticket, title: e.target.value })}
+                        placeholder="Enter issue summary…"
+                    />
+                </div>
 
                 {/* Description */}
                 <div className="mt-4 flex flex-col gap-3">

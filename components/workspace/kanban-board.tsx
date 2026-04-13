@@ -4,6 +4,8 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useFeedback } from "@/components/ui/feedback-provider";
+import { TicketDetail } from "./ticket-detail";
+import { useSearchParams } from "next/navigation";
 
 type User = {
     _id: string;
@@ -14,6 +16,7 @@ type User = {
 
 type Ticket = {
     _id: string;
+    sid: number;
     title: string;
     description: string;
     status: "Todo" | "In progress" | "Blocked" | "Done";
@@ -122,9 +125,32 @@ export function KanbanBoard() {
     const [statusMenuPos, setStatusMenuPos] = useState({ top: 0, left: 0 });
     const statusBtnRef = useRef<HTMLButtonElement>(null);
     const [showArchived, setShowArchived] = useState(false);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Ticket | "assignee"; direction: "asc" | "desc" } | null>(null);
     const { data: session } = useSession();
     const { confirm } = useFeedback();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const tid = searchParams.get("ticketId");
+        if (tid) setSelectedTicketId(tid);
+    }, [searchParams]);
+
+    const handleCloseModal = () => {
+        setSelectedTicketId(null);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("ticketId");
+        const query = params.toString() ? `?${params.toString()}` : "";
+        router.push(query || "/app/board", { scroll: false });
+    };
+
+    const handleOpenTicket = (id: string) => {
+        setSelectedTicketId(id);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("ticketId", id);
+        router.push(`?${params.toString()}`, { scroll: false });
+    };
 
     const fetchBoard = async () => {
         try {
@@ -150,12 +176,53 @@ export function KanbanBoard() {
         void fetchBoard();
     }, [showArchived]);
 
+    const requestSort = (key: keyof Ticket | "assignee") => {
+        let direction: "asc" | "desc" = "asc";
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+            direction = "desc";
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortedTickets = (ticketsToSort: Ticket[]) => {
+        if (!sortConfig) return ticketsToSort;
+
+        const priorityOrder: Record<string, number> = { Highest: 5, High: 4, Medium: 3, Low: 2, Lowest: 1 };
+
+        return [...ticketsToSort].sort((a, b) => {
+            const { key, direction } = sortConfig;
+            let aValue: any;
+            let bValue: any;
+
+            if (key === "assignee") {
+                aValue = a.assigneeId ? (a.assigneeId.name || a.assigneeId.email).toLowerCase() : "";
+                bValue = b.assigneeId ? (b.assigneeId.name || b.assigneeId.email).toLowerCase() : "";
+            } else if (key === "priority") {
+                aValue = priorityOrder[a.priority ?? "Medium"] || 0;
+                bValue = priorityOrder[b.priority ?? "Medium"] || 0;
+            } else {
+                aValue = a[key] ?? "";
+                bValue = b[key] ?? "";
+                if (typeof aValue === "string") aValue = aValue.toLowerCase();
+                if (typeof bValue === "string") bValue = bValue.toLowerCase();
+            }
+
+            if (aValue < bValue) return direction === "asc" ? -1 : 1;
+            if (aValue > bValue) return direction === "asc" ? 1 : -1;
+            return 0;
+        });
+    };
+
     const handleCreate = async (status: Ticket["status"]) => {
         if (!newTitle.trim()) { setIsAdding(null); return; }
         const res = await fetch("/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: newTitle, status }),
+            body: JSON.stringify({ 
+                title: newTitle, 
+                status,
+                assigneeId: filterUserId // Auto-assign to filtered user if present
+            }),
         });
         if (res.ok) {
             const { ticket } = await res.json();
@@ -216,16 +283,31 @@ export function KanbanBoard() {
         );
     }
 
-    const visibleTickets = tickets.filter((t) => {
+    const filteredTickets = tickets.filter((t) => {
         const matchesUser = !filterUserId || t.assigneeId?._id === filterUserId;
         const matchesStatus = !filterStatus || t.status === filterStatus;
         return matchesUser && matchesStatus;
     });
 
+    const finalTickets = viewMode === "table" ? getSortedTickets(filteredTickets) : filteredTickets;
+
+    const SortIndicator = ({ column }: { column: keyof Ticket | "assignee" }) => {
+        if (!sortConfig || sortConfig.key !== column) return <div className="ml-1 w-3 h-3 opacity-0 group-hover:opacity-30 transition-opacity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5-5"/></svg></div>;
+        return (
+            <span className="ml-1 text-violet-400">
+                {sortConfig.direction === "asc" ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden><path d="m18 15-6-6-6 6"/></svg>
+                ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden><path d="m6 9 6 6 6-6"/></svg>
+                )}
+            </span>
+        );
+    };
+
     return (
         <div className="flex h-full flex-col gap-4 overflow-hidden">
             {/* ── User filter bar ── */}
-            <div className="flex shrink-0 items-center gap-3 overflow-x-auto rounded-xl border border-white/[0.06] bg-[var(--surface-mid)] px-4 py-3">
+            <div className="flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-[var(--surface-mid)] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 no-scrollbar">
                 <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-white/30">
                     Filter
                 </span>
@@ -382,14 +464,14 @@ export function KanbanBoard() {
             </div>
 
             {viewMode === "kanban" ? (
-                <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
+                <div className="flex flex-1 gap-4 overflow-x-auto pb-4 snap-x snap-mandatory">
                     {COLUMNS.map((col) => {
                         const theme = COL_THEME[col] ?? COL_THEME.Todo;
-                        const colTickets = visibleTickets.filter((t) => t.status === col);
+                        const colTickets = filteredTickets.filter((t) => t.status === col);
                         return (
                             <div
                                 key={col}
-                                className={`flex w-[320px] shrink-0 flex-col rounded-2xl border bg-[var(--surface-mid)] p-3 ${theme.border}`}
+                                className={`flex w-[85vw] sm:w-[320px] shrink-0 snap-center flex-col rounded-2xl border bg-[var(--surface-mid)] p-3 ${theme.border}`}
                                 onDragOver={handleDragOver}
                                 onDrop={(e) => handleDrop(e, col)}
                             >
@@ -415,7 +497,7 @@ export function KanbanBoard() {
                                                 key={t._id}
                                                 draggable
                                                 onDragStart={(e) => handleDragStart(e, t._id)}
-                                                onClick={() => router.push(`/app/board/ticket/${t._id}`)}
+                                                onClick={() => handleOpenTicket(t._id)}
                                                 className={`group relative cursor-pointer rounded-xl border-l-[3px] border border-white/[0.06] bg-[var(--surface-raised)] p-3.5 transition-all hover:bg-[var(--surface-overlay)] hover:shadow-lg active:cursor-grabbing ${theme.cardAccent}`}
                                             >
                                                 <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -437,6 +519,9 @@ export function KanbanBoard() {
                                                             <path d="M18 6 6 18" /><path d="m6 6 12 12" />
                                                         </svg>
                                                     </button>
+                                                </div>
+                                                <div className="mb-1 flex items-center gap-1.5">
+                                                    <span className="text-[10px] font-bold tracking-wider text-violet-400/80">US-{t.sid}</span>
                                                 </div>
                                                 <p className="pr-4 text-sm font-medium leading-snug text-white/90">{t.title}</p>
 
@@ -520,29 +605,47 @@ export function KanbanBoard() {
             ) : (
                 <div className="flex-1 overflow-x-auto overflow-y-auto rounded-2xl border border-white/[0.06] bg-[var(--surface-mid)] relative">
                     <table className="w-full text-left text-sm text-white/90 whitespace-nowrap">
-                        <thead className="sticky top-0 z-20 bg-[var(--surface-mid)] shadow-sm">
-                            <tr className="border-b border-white/10 text-[11px] font-bold uppercase tracking-wider text-white/40">
-                                <th className="py-3.5 pl-5 pr-4 font-semibold w-full min-w-[280px]">Task</th>
-                                <th className="px-4 py-3.5 font-semibold">Status</th>
-                                <th className="px-4 py-3.5 font-semibold">Assignee</th>
-                                <th className="px-4 py-3.5 font-semibold">Type</th>
-                                <th className="px-4 py-3.5 font-semibold">Priority</th>
-                                <th className="px-4 py-3.5 font-semibold">Deadline</th>
+                        <thead className="sticky top-0 z-20 bg-[var(--surface-mid)] shadow-sm border-b border-white/10">
+                            <tr className="text-[11px] font-bold uppercase tracking-wider text-white/40">
+                                <th onClick={() => requestSort("sid")} className="py-3.5 pl-5 pr-2 font-semibold w-20 cursor-pointer group hover:text-white transition-colors">
+                                    <div className="flex items-center">ID<SortIndicator column="sid" /></div>
+                                </th>
+                                <th onClick={() => requestSort("title")} className="py-3.5 px-4 font-semibold w-full min-w-[200px] sm:min-w-[280px] cursor-pointer group hover:text-white transition-colors">
+                                    <div className="flex items-center">Task<SortIndicator column="title" /></div>
+                                </th>
+                                <th onClick={() => requestSort("status")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors">
+                                    <div className="flex items-center">Status<SortIndicator column="status" /></div>
+                                </th>
+                                <th onClick={() => requestSort("assignee")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors hidden sm:table-cell">
+                                    <div className="flex items-center">Assignee<SortIndicator column="assignee" /></div>
+                                </th>
+                                <th onClick={() => requestSort("priority")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors hidden md:table-cell">
+                                    <div className="flex items-center">Priority<SortIndicator column="priority" /></div>
+                                </th>
+                                <th onClick={() => requestSort("estimate")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors hidden lg:table-cell">
+                                    <div className="flex items-center">Deadline<SortIndicator column="estimate" /></div>
+                                </th>
+                                <th onClick={() => requestSort("type")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors hidden xl:table-cell">
+                                    <div className="flex items-center">Type<SortIndicator column="type" /></div>
+                                </th>
                                 <th className="py-3.5 pr-5 pl-4 font-semibold text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.04]">
-                            {visibleTickets.map((t) => {
+                            {finalTickets.map((t) => {
                                 const assigneeName = t.assigneeId
                                     ? (t.assigneeId.name || t.assigneeId.email.split("@")[0])
                                     : null;
                                 return (
                                     <tr 
                                         key={t._id} 
-                                        onClick={() => router.push(`/app/board/ticket/${t._id}`)}
+                                        onClick={() => handleOpenTicket(t._id)}
                                         className="group cursor-pointer transition-colors hover:bg-white/[0.03]"
                                     >
-                                        <td className="py-3.5 pl-5 pr-4">
+                                        <td className="py-3.5 pl-5 pr-2">
+                                            <span className="text-[11px] font-bold text-violet-400/70 shrink-0">US-{t.sid}</span>
+                                        </td>
+                                        <td className="py-3.5 px-4">
                                             <span className="font-medium max-w-[400px] truncate block">{t.title}</span>
                                         </td>
                                         <td className="px-4 py-3.5">
@@ -550,7 +653,7 @@ export function KanbanBoard() {
                                                 {t.status}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3.5">
+                                        <td className="px-4 py-3.5 hidden sm:table-cell">
                                             {assigneeName ? (
                                                 <div className="flex items-center gap-2" title={assigneeName}>
                                                     <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(assigneeName)} text-[9px] font-bold text-white ring-1 ring-white/20`}>
@@ -564,12 +667,7 @@ export function KanbanBoard() {
                                                 <span className="text-xs text-white/30 italic">Unassigned</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3.5">
-                                            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${TYPE_COLORS[t.type || "Task"] ?? TYPE_COLORS.Task}`}>
-                                                {t.type || "Task"}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3.5">
+                                        <td className="px-4 py-3.5 hidden md:table-cell">
                                             <div className="flex items-center gap-1.5">
                                                 <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_COLORS[t.priority || "Medium"]?.replace("text-", "bg-") ?? "bg-zinc-500"}`} />
                                                 <span className={`text-[11px] font-semibold ${PRIORITY_COLORS[t.priority || "Medium"] ?? "text-white/70"}`}>
@@ -577,15 +675,20 @@ export function KanbanBoard() {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3.5">
+                                        <td className="px-4 py-3.5 hidden lg:table-cell">
                                             {t.estimate ? (
                                                 <span className="flex items-center gap-1.5 text-xs text-white/60">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                     {new Date(t.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                                                 </span>
                                             ) : (
                                                 <span className="text-xs text-white/30 italic">-</span>
                                             )}
+                                        </td>
+                                        <td className="px-4 py-3.5 hidden xl:table-cell">
+                                            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${TYPE_COLORS[t.type || "Task"] ?? TYPE_COLORS.Task}`}>
+                                                {t.type || "Task"}
+                                            </span>
                                         </td>
                                         <td className="py-3.5 pr-5 pl-4 text-right">
                                             <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -612,15 +715,76 @@ export function KanbanBoard() {
                                     </tr>
                                 );
                             })}
-                            {visibleTickets.length === 0 && (
+                            
+                            {/* Add Card row in table */}
+                            <tr className="group">
+                                <td colSpan={8} className="p-0">
+                                    {isAdding === "Todo" ? (
+                                        <div className="flex items-center gap-3 px-5 py-3 bg-white/[0.02] border-y border-white/[0.04]">
+                                            <input
+                                                type="text"
+                                                autoFocus
+                                                value={newTitle}
+                                                onChange={(e) => setNewTitle(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") void handleCreate("Todo");
+                                                    if (e.key === "Escape") setIsAdding(null);
+                                                }}
+                                                placeholder="Task title..."
+                                                className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
+                                            />
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => void handleCreate("Todo")}
+                                                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500"
+                                                >
+                                                    Add
+                                                </button>
+                                                <button
+                                                    onClick={() => setIsAdding(null)}
+                                                    className="px-2 py-1.5 text-xs text-white/40 hover:text-white"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setIsAdding("Todo")}
+                                            className="flex w-full items-center gap-2 px-5 py-3 text-xs font-medium text-white/30 hover:bg-white/[0.02] hover:text-white/60 transition-colors"
+                                        >
+                                            <span className="text-lg leading-none">+</span>
+                                            Add card
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+
+                            {finalTickets.length === 0 && !isAdding && (
                                 <tr>
-                                    <td colSpan={7} className="py-12 text-center text-sm text-white/40">
+                                    <td colSpan={8} className="py-12 text-center text-sm text-white/40">
                                         No tasks found.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {/* ── Ticket Detail Modal ── */}
+            {selectedTicketId && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-6 md:p-10">
+                    <div 
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                        onClick={handleCloseModal}
+                    />
+                    <div className="relative z-10 h-full w-full max-w-7xl overflow-hidden rounded-none sm:rounded-3xl border-x-0 sm:border border-white/10 bg-[#0a0a0c] shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom sm:zoom-in-95 sm:fade-in duration-300">
+                        <TicketDetail 
+                            ticketId={selectedTicketId} 
+                            onClose={handleCloseModal}
+                        />
+                    </div>
                 </div>
             )}
         </div>
