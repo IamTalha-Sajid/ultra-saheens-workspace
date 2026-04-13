@@ -143,6 +143,8 @@ export function KanbanBoard() {
         params.delete("ticketId");
         const query = params.toString() ? `?${params.toString()}` : "";
         router.push(query || "/app/board", { scroll: false });
+        // Refresh board to reflect changes
+        void fetchBoard();
     };
 
     const handleOpenTicket = (id: string) => {
