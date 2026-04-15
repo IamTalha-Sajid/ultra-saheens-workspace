@@ -22,10 +22,27 @@ function isPopulatedUser(u: unknown): u is PopulatedUser {
 function serializeTicket(
   t: TicketDoc & {
     assigneeId?: PopulatedUser | null;
+    assigneeIds?: Array<PopulatedUser | mongoose.Types.ObjectId> | null;
     creatorId: PopulatedUser;
   }
 ) {
-  const assignee = t.assigneeId;
+  const assigneeList: ReturnType<typeof userToJson>[] = [];
+  if (Array.isArray(t.assigneeIds)) {
+    for (const rawAssignee of t.assigneeIds) {
+      if (isPopulatedUser(rawAssignee)) {
+        assigneeList.push(
+          userToJson({
+            _id: rawAssignee._id,
+            name: rawAssignee.name,
+            email: rawAssignee.email,
+            username: rawAssignee.username,
+          })
+        );
+      }
+    }
+  }
+  const fallbackAssignee = isPopulatedUser(t.assigneeId) ? userToJson(t.assigneeId) : undefined;
+  const assigneeIds = assigneeList.length > 0 ? assigneeList : fallbackAssignee ? [fallbackAssignee] : [];
   const creator = isPopulatedUser(t.creatorId)
     ? userToJson(t.creatorId)
     : { _id: String(t.creatorId), name: "", email: "" };
@@ -40,7 +57,8 @@ function serializeTicket(
     type: t.type,
     labels: t.labels,
     estimate: t.estimate,
-    assigneeId: isPopulatedUser(assignee) ? userToJson(assignee) : undefined,
+    assigneeId: assigneeIds[0],
+    assigneeIds,
     creatorId: creator,
     createdAt: t.createdAt.toISOString(),
   };
@@ -59,6 +77,7 @@ export async function GET(request: Request) {
   const tickets = await Ticket.find({ archived })
     .sort({ createdAt: -1 })
     .populate("assigneeId", "name email username")
+    .populate("assigneeIds", "name email username")
     .populate("creatorId", "name email username")
     .lean();
 
@@ -79,6 +98,7 @@ export async function POST(request: Request) {
     title?: string;
     status?: TicketDoc["status"];
     assigneeId?: string;
+    assigneeIds?: string[];
   };
   const title = String(body.title ?? "").trim();
   if (!title) {
@@ -91,9 +111,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  const assigneeId = body.assigneeId && mongoose.Types.ObjectId.isValid(body.assigneeId)
-    ? new mongoose.Types.ObjectId(body.assigneeId)
-    : undefined;
+  const assigneeIdsRaw = Array.isArray(body.assigneeIds) ? body.assigneeIds : [];
+  const assigneeIds = [...new Set(
+    assigneeIdsRaw
+      .map((id) => String(id))
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+  )].map((id) => new mongoose.Types.ObjectId(id));
+
+  if (assigneeIds.length === 0 && body.assigneeId && mongoose.Types.ObjectId.isValid(body.assigneeId)) {
+    assigneeIds.push(new mongoose.Types.ObjectId(body.assigneeId));
+  }
 
   await connectDB();
   const creatorOid = new mongoose.Types.ObjectId(userId);
@@ -111,11 +138,13 @@ export async function POST(request: Request) {
     description: "",
     status,
     creatorId: creatorOid,
-    assigneeId,
+    assigneeId: assigneeIds[0],
+    assigneeIds,
   });
 
   const populated = await Ticket.findById(doc._id)
     .populate("assigneeId", "name email username")
+    .populate("assigneeIds", "name email username")
     .populate("creatorId", "name email username")
     .lean();
 
@@ -125,7 +154,11 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ticket: serializeTicket(
-      populated as unknown as TicketDoc & { assigneeId?: PopulatedUser | null; creatorId: PopulatedUser }
+      populated as unknown as TicketDoc & {
+        assigneeId?: PopulatedUser | null;
+        assigneeIds?: Array<PopulatedUser | mongoose.Types.ObjectId> | null;
+        creatorId: PopulatedUser
+      }
     ),
   });
 }

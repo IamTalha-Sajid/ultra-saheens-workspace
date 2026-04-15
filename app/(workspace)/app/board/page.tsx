@@ -1,6 +1,6 @@
 import { KanbanBoard } from "@/components/workspace/kanban-board";
 
-export const metadata = { title: "Executive Committee - Ultra Shaheens" };
+export const metadata = { title: "Executive Board - Ultra Shaheens" };
 
 export default function BoardPage() {
     return (
@@ -15,7 +15,7 @@ export default function BoardPage() {
                     </span>
                     <div>
                         <h1 className="text-base font-semibold tracking-tight text-white md:text-lg">
-                            Executive Committee
+                            Executive Board
                         </h1>
                         <p className="mt-0.5 text-xs text-white/35">
                             Track tasks across <span className="text-indigo-300">Todo</span>, <span className="text-amber-300">In Progress</span>, <span className="text-rose-300">Blocked</span>, and <span className="text-emerald-300">Done</span>. Done tasks auto-archive after 1 week.

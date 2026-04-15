@@ -15,7 +15,7 @@ export type MentionUser = {
 };
 
 function mentionLabel(u: MentionUser) {
-  if (u.username) return `@${u.username}`;
+  if (u.username) return u.username;
   return u.name.trim() || u.id;
 }
 

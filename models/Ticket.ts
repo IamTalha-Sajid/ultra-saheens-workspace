@@ -10,6 +10,7 @@ export interface TicketDoc extends Document {
     labels: string[];
     estimate: string;
     assigneeId?: Types.ObjectId;
+    assigneeIds: Types.ObjectId[];
     creatorId: Types.ObjectId;
     archived: boolean;
     doneAt?: Date;
@@ -40,6 +41,7 @@ const TicketSchema = new Schema<TicketDoc>(
         labels: { type: [String], default: [] },
         estimate: { type: String, default: "" },
         assigneeId: { type: Schema.Types.ObjectId, ref: "User" },
+        assigneeIds: { type: [{ type: Schema.Types.ObjectId, ref: "User" }], default: [] },
         creatorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
         archived: { type: Boolean, default: false },
         doneAt: { type: Date },

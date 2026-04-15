@@ -35,6 +35,7 @@ type Ticket = {
     labels: string[];
     estimate: string;
     assigneeId?: User | string | null;
+    assigneeIds?: User[] | string[];
     creatorId: User;
     createdAt: string;
 };
@@ -160,16 +161,80 @@ const COLUMNS = ["Todo", "In progress", "Done", "Blocked"];
 
 /* ── Component ── */
 
-export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?: () => void }) {
+export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?: (hasChanges?: boolean) => void }) {
     const router = useRouter();
     const { data: session } = useSession();
     const { confirm } = useFeedback();
     const [ticket, setTicket] = useState<Ticket | null>(null);
+    const [originalTicket, setOriginalTicket] = useState<Ticket | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
+    const [originalComments, setOriginalComments] = useState<Comment[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isSwitchingTicket, setIsSwitchingTicket] = useState(false);
     const [commentEmpty, setCommentEmpty] = useState(true);
     const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+    const [hasPersistedChanges, setHasPersistedChanges] = useState(false);
+    const [assigneeQuery, setAssigneeQuery] = useState("");
+    const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
+
+    const normalizeAssigneeIds = (assigneeId: Ticket["assigneeId"], assigneeIds?: Ticket["assigneeIds"]): string[] => {
+        if (Array.isArray(assigneeIds) && assigneeIds.length > 0) {
+            return assigneeIds
+                .map((x) => (typeof x === "string" ? x : x?._id || ""))
+                .filter(Boolean)
+                .sort();
+        }
+        if (!assigneeId) return [];
+        const single = typeof assigneeId === "string" ? assigneeId : assigneeId._id || "";
+        return single ? [single] : [];
+    };
+
+    const hasUnsavedTicketChanges = useMemo(() => {
+        if (!ticket || !originalTicket) return false;
+        return (
+            ticket.title !== originalTicket.title ||
+            ticket.description !== originalTicket.description ||
+            ticket.status !== originalTicket.status ||
+            ticket.priority !== originalTicket.priority ||
+            ticket.type !== originalTicket.type ||
+            ticket.estimate !== originalTicket.estimate ||
+            JSON.stringify(normalizeAssigneeIds(ticket.assigneeId, ticket.assigneeIds)) !==
+            JSON.stringify(normalizeAssigneeIds(originalTicket.assigneeId, originalTicket.assigneeIds)) ||
+            JSON.stringify(ticket.labels) !== JSON.stringify(originalTicket.labels)
+        );
+    }, [ticket, originalTicket]);
+
+    const selectedAssigneeIds = useMemo(
+        () => (ticket ? normalizeAssigneeIds(ticket.assigneeId, ticket.assigneeIds) : []),
+        [ticket?.assigneeId, ticket?.assigneeIds]
+    );
+
+    const selectedAssignees = useMemo(
+        () => users.filter((u) => selectedAssigneeIds.includes(u._id)),
+        [users, selectedAssigneeIds]
+    );
+
+    const assigneeOptions = useMemo(() => {
+        const q = assigneeQuery.trim().toLowerCase();
+        return users.filter((u) => {
+            if (selectedAssigneeIds.includes(u._id)) return false;
+            if (!q) return true;
+            const name = (u.name || "").toLowerCase();
+            const email = (u.email || "").toLowerCase();
+            const username = (u.username || "").toLowerCase();
+            return name.includes(q) || email.includes(q) || username.includes(q);
+        });
+    }, [users, selectedAssigneeIds, assigneeQuery]);
+
+    const toggleAssignee = (userId: string) => {
+        if (!ticket) return;
+        const next = selectedAssigneeIds.includes(userId)
+            ? selectedAssigneeIds.filter((id) => id !== userId)
+            : [...selectedAssigneeIds, userId];
+        updateField("assigneeIds", next);
+        updateField("assigneeId", next[0] ?? "");
+    };
 
     const commentEditor = useEditor({
         immediatelyRender: false,
@@ -189,6 +254,42 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
         }
     });
 
+    const titleEditor = useEditor({
+        immediatelyRender: false,
+        extensions: [
+            StarterKit.configure({
+                heading: false,
+                listItem: false,
+                bulletList: false,
+                orderedList: false,
+                codeBlock: false,
+                blockquote: false,
+                horizontalRule: false,
+                hardBreak: false,
+            }),
+            Placeholder.configure({ placeholder: "Enter issue summary…" }),
+            createUserMentionExtension(),
+        ],
+        content: "",
+        editorProps: {
+            attributes: {
+                class: "tiptap-editor w-full bg-transparent text-4xl font-bold tracking-tight text-white outline-none ring-0 placeholder-[var(--text-muted)] transition-colors focus:text-[var(--accent)] md:text-5xl"
+            },
+            handleKeyDown: (view, event) => {
+                // Prevent Enter from creating new lines in title
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    return true;
+                }
+                return false;
+            }
+        },
+        onUpdate: ({ editor }) => {
+            const content = editor.getText().trim();
+            setTicket(prev => prev ? { ...prev, title: content } : null);
+        }
+    });
+
     const fetchTicket = async () => {
         try {
             const [tRes, uRes] = await Promise.all([
@@ -198,15 +299,25 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
             if (tRes.ok) {
                 const data = await tRes.json();
                 const t = data.ticket;
-                setTicket({
+                const ticketData = {
                     ...t,
                     sid: t.sid,
                     labels: t.labels ?? [],
                     priority: t.priority ?? "Medium",
                     type: t.type ?? "Task",
                     estimate: t.estimate ?? "",
-                });
+                    assigneeIds: (t.assigneeIds && t.assigneeIds.length > 0)
+                        ? t.assigneeIds
+                        : (t.assigneeId ? [t.assigneeId] : []),
+                };
+                setTicket(ticketData);
+                setOriginalTicket(JSON.parse(JSON.stringify(ticketData))); // Deep copy
                 setComments(data.comments || []);
+                setOriginalComments(JSON.parse(JSON.stringify(data.comments || []))); // Deep copy
+                // Set title editor content
+                if (titleEditor) {
+                    titleEditor.commands.setContent(ticketData.title || "");
+                }
             }
             if (uRes.ok) {
                 const { users } = await uRes.json();
@@ -214,16 +325,32 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
             }
         } finally {
             setLoading(false);
+            setIsSwitchingTicket(false);
         }
     };
 
     useEffect(() => {
+        setIsSwitchingTicket(true);
         void fetchTicket();
     }, [ticketId]);
 
+    useEffect(() => {
+        if (!titleEditor || !ticket) return;
+        const nextTitle = ticket.title || "";
+        if (titleEditor.getText() !== nextTitle) {
+            titleEditor.commands.setContent(nextTitle);
+        }
+    }, [titleEditor, ticket?._id, ticket?.title]);
+
+    useEffect(() => {
+        return () => {
+            commentEditor?.destroy();
+            titleEditor?.destroy();
+        };
+    }, [commentEditor, titleEditor]);
+
     const updateField = (field: keyof Ticket, value: any) => {
-        if (!ticket) return;
-        setTicket({ ...ticket, [field]: value });
+        setTicket((prev) => (prev ? { ...prev, [field]: value } : prev));
     };
 
     const handleSaveAll = useCallback(async () => {
@@ -240,11 +367,25 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                 type: ticket.type,
                 labels: ticket.labels,
                 estimate: ticket.estimate,
-                assigneeId: typeof ticket.assigneeId === 'string' ? ticket.assigneeId || null : ticket.assigneeId?._id || null,
+                assigneeIds: normalizeAssigneeIds(ticket.assigneeId, ticket.assigneeIds),
             }),
         });
         if (res.ok) {
+            const payload = await res.json();
+            const savedTicket = payload?.ticket
+                ? {
+                    ...payload.ticket,
+                    sid: payload.ticket.sid,
+                    labels: payload.ticket.labels ?? [],
+                    priority: payload.ticket.priority ?? "Medium",
+                    type: payload.ticket.type ?? "Task",
+                    estimate: payload.ticket.estimate ?? "",
+                }
+                : ticket;
+            setTicket(savedTicket);
+            setOriginalTicket(JSON.parse(JSON.stringify(savedTicket)));
             setSaveState("saved");
+            setHasPersistedChanges(true);
             setTimeout(() => setSaveState("idle"), 2500);
         } else {
             setSaveState("idle");
@@ -266,6 +407,7 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
         if (res.ok) {
             const data = await res.json();
             setComments((prev) => [...prev, data.comment]);
+            setHasPersistedChanges(true);
             commentEditor.commands.clearContent(true);
             setCommentEmpty(true);
         }
@@ -284,6 +426,7 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
         });
         if (res.ok) {
             setComments((prev) => prev.filter((c) => c._id !== commentId));
+            setHasPersistedChanges(true);
         }
     };
 
@@ -302,7 +445,7 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                     The ticket you are looking for does not exist or has been deleted.
                 </p>
                 {onClose ? (
-                    <button onClick={onClose} className="glass-button-primary w-auto px-6">
+                    <button onClick={() => onClose(hasPersistedChanges)} className="glass-button-primary w-auto px-6">
                         Close
                     </button>
                 ) : (
@@ -315,14 +458,22 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
     }
 
     return (
-        <div className="flex h-full w-full flex-col gap-4 overflow-y-auto pb-4 lg:flex-row lg:gap-6 lg:pb-6">
+        <div className="relative flex h-full w-full flex-col gap-4 overflow-hidden pb-4 lg:flex-row lg:gap-6 lg:pb-6">
+            {isSwitchingTicket && !loading && (
+                <div className="absolute inset-0 z-[30] flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+                    <div className="glass-panel flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 text-sm text-white/90 shadow-2xl">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
+                        Loading ticket...
+                    </div>
+                </div>
+            )}
             {/* ── Main Content ── */}
-            <div className="glass-card flex flex-1 flex-col gap-6 rounded-3xl p-4 shadow-2xl sm:p-6 md:p-8 lg:p-10">
+            <div className="glass-card flex flex-1 flex-col gap-6 overflow-y-auto rounded-none p-4 sm:p-6 md:p-8 lg:p-10">
                 {/* Top Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     {onClose ? (
                         <button
-                            onClick={onClose}
+                            onClick={() => onClose(hasPersistedChanges)}
                             className="group flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-white"
                         >
                             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 transition-colors group-hover:bg-white/10">
@@ -360,7 +511,7 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                         <button
                             type="button"
                             onClick={() => void handleSaveAll()}
-                            disabled={saveState === "saving"}
+                            disabled={saveState === "saving" || !hasUnsavedTicketChanges}
                             className="ml-2 flex items-center gap-2 rounded-xl border border-violet-500/40 bg-gradient-to-b from-violet-600 to-violet-800 px-5 py-2 text-sm font-semibold text-white shadow-[0_4px_20px_rgba(139,92,246,0.25)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {saveState === "saving" ? (
@@ -388,13 +539,13 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-black tracking-widest text-violet-400/80">US-{ticket.sid}</span>
                     </div>
-                    <input
-                        type="text"
-                        className="w-full bg-transparent text-3xl font-bold tracking-tight text-white outline-none ring-0 placeholder-[var(--text-muted)] transition-colors focus:text-[var(--accent)] md:text-4xl"
-                        value={ticket.title}
-                        onChange={(e) => setTicket({ ...ticket, title: e.target.value })}
-                        placeholder="Enter issue summary…"
-                    />
+                    {titleEditor ? (
+                        <EditorContent editor={titleEditor} />
+                    ) : (
+                        <div className="w-full bg-transparent text-4xl font-bold tracking-tight text-white outline-none ring-0 placeholder-[var(--text-muted)] transition-colors focus:text-[var(--accent)] md:text-5xl">
+                            {ticket.title || "Enter issue summary…"}
+                        </div>
+                    )}
                 </div>
 
                 {/* Description */}
@@ -474,7 +625,7 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
             </div>
 
             {/* ── Side Details Pane ── */}
-            <div className="glass-card sticky top-6 flex h-fit w-full shrink-0 flex-col gap-8 rounded-3xl p-6 shadow-2xl md:p-8 lg:w-[360px]">
+            <div className="glass-card flex w-full shrink-0 flex-col gap-8 overflow-y-auto rounded-none p-6 md:p-8 lg:h-full lg:w-[360px]">
                 <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-white/30">
                     <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
                     Issue Details
@@ -491,16 +642,85 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                         />
                     </DetailRow>
 
-                    {/* Assignee */}
-                    <DetailRow icon={<UserIcon className="h-4 w-4" />} label="Assignee">
-                        <CustomSelect
-                            value={typeof ticket.assigneeId === 'string' ? ticket.assigneeId : ticket.assigneeId?._id || ""}
-                            options={[
-                                { value: "", label: "Unassigned" },
-                                ...users.map(u => ({ value: u._id, label: u.name || u.email.split("@")[0] }))
-                            ]}
-                            onChange={(val) => updateField("assigneeId", val)}
-                        />
+                    {/* Assignees */}
+                    <DetailRow icon={<UserIcon className="h-4 w-4" />} label="Assignees">
+                        <div className="relative">
+                            <div className="glass-panel flex min-h-[42px] flex-wrap items-center gap-2 rounded-xl border border-white/10 px-2.5 py-2">
+                                {selectedAssignees.map((u) => {
+                                    const label = u.name || u.email.split("@")[0];
+                                    return (
+                                        <span key={u._id} className="inline-flex items-center gap-1 rounded-md border border-violet-400/30 bg-violet-500/15 px-2 py-1 text-xs text-white">
+                                            <span className="max-w-[140px] truncate">{label}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleAssignee(u._id)}
+                                                className="text-white/70 hover:text-white"
+                                                title="Remove assignee"
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    );
+                                })}
+                                <input
+                                    value={assigneeQuery}
+                                    onFocus={() => setAssigneeMenuOpen(true)}
+                                    onChange={(e) => {
+                                        setAssigneeQuery(e.target.value);
+                                        setAssigneeMenuOpen(true);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Backspace" && !assigneeQuery && selectedAssigneeIds.length > 0) {
+                                            const last = selectedAssigneeIds[selectedAssigneeIds.length - 1];
+                                            toggleAssignee(last);
+                                        }
+                                    }}
+                                    placeholder={selectedAssigneeIds.length === 0 ? "Search and add assignees..." : "Add more..."}
+                                    className="min-w-[120px] flex-1 bg-transparent text-sm text-white/90 outline-none placeholder:text-white/35"
+                                />
+                            </div>
+
+                            {assigneeMenuOpen && (
+                                <div className="absolute left-0 right-0 z-[120] mt-2 max-h-52 overflow-y-auto rounded-xl border border-white/10 bg-[var(--surface-overlay)] p-1.5 shadow-2xl backdrop-blur-xl">
+                                    {assigneeOptions.length === 0 ? (
+                                        <p className="px-2 py-2 text-xs text-white/45">No matching users.</p>
+                                    ) : (
+                                        assigneeOptions.map((u) => {
+                                            const label = u.name || u.email.split("@")[0];
+                                            return (
+                                                <button
+                                                    key={u._id}
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => {
+                                                        toggleAssignee(u._id);
+                                                        setAssigneeQuery("");
+                                                        setAssigneeMenuOpen(true);
+                                                    }}
+                                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-white/80 transition-colors hover:bg-white/[0.06] hover:text-white"
+                                                >
+                                                    <span className="truncate">{label}</span>
+                                                    <span className="ml-2 truncate text-[11px] text-white/45">{u.email}</span>
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            )}
+
+                            {assigneeMenuOpen && (
+                                <button
+                                    type="button"
+                                    aria-label="Close assignee menu"
+                                    className="fixed inset-0 z-[110] cursor-default"
+                                    onClick={() => setAssigneeMenuOpen(false)}
+                                />
+                            )}
+
+                            {selectedAssigneeIds.length === 0 && (
+                                <span className="mt-1 block px-1 text-[11px] italic text-[var(--text-muted)]">Unassigned</span>
+                            )}
+                        </div>
                     </DetailRow>
 
                     {/* Reporter */}

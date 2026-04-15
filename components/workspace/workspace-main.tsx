@@ -40,7 +40,14 @@ export function WorkspaceMain() {
       if (pRes.ok && tRes.ok) {
         const { pages } = await pRes.json();
         const { tickets } = await tRes.json();
-        const myTickets = tickets.filter((t: any) => t.assigneeId?._id === session?.user?.id).length;
+        const myTickets = tickets.filter((t: any) => {
+          const ids = Array.isArray(t.assigneeIds) && t.assigneeIds.length > 0
+            ? t.assigneeIds.map((a: any) => a?._id)
+            : t.assigneeId?._id
+              ? [t.assigneeId._id]
+              : [];
+          return ids.includes(session?.user?.id);
+        }).length;
         setStats({ pages: pages.length, tickets: tickets.length, myTickets });
       }
     };

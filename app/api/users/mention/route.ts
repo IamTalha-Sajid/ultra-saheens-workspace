@@ -15,8 +15,21 @@ export async function GET(request: NextRequest) {
   }
 
   const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
+  // Allow empty query to show all users for @ mentions
   if (q.length < 1) {
-    return NextResponse.json({ users: [] });
+    await connectDB();
+    const users = await User.find({})
+      .select("name email username")
+      .limit(12)
+      .lean();
+
+    return NextResponse.json({
+      users: users.map((u) => ({
+        id: String(u._id),
+        name: u.name ?? "",
+        username: u.username ?? "",
+      })),
+    });
   }
 
   await connectDB();

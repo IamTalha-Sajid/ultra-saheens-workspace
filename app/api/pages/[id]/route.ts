@@ -182,13 +182,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (String(exists.userId) !== userId) {
-    return NextResponse.json(
-      { error: "Only the page creator can delete this page." },
-      { status: 403 }
-    );
-  }
-
   const toRemove = await collectDescendantIds(rootOid);
   await Page.deleteMany({ _id: { $in: toRemove } });
 

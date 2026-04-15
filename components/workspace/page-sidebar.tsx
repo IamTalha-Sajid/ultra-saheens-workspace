@@ -24,7 +24,6 @@ function TreeRows({
   nodes,
   depth,
   selectedId,
-  currentUserId,
   onSelect,
   onAddChild,
   onDelete,
@@ -32,7 +31,6 @@ function TreeRows({
   nodes: PageTreeNode[];
   depth: number;
   selectedId: string | null;
-  currentUserId: string;
   onSelect: (id: string) => void;
   onAddChild: (parentId: string) => void;
   onDelete: (id: string, title: string) => void;
@@ -76,26 +74,23 @@ function TreeRows({
             >
               +
             </button>
-            {node.createdBy._id === currentUserId ? (
-              <button
-                type="button"
-                title="Delete page"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(node._id, node.title);
-                }}
-                className="shrink-0 rounded p-1 text-[var(--xanadu)] opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
-              >
-                ×
-              </button>
-            ) : null}
+            <button
+              type="button"
+              title="Delete page"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(node._id, node.title);
+              }}
+              className="shrink-0 rounded p-1 text-[var(--xanadu)] opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
+            >
+              ×
+            </button>
           </div>
           {node.children.length > 0 ? (
             <TreeRows
               nodes={node.children}
               depth={depth + 1}
               selectedId={selectedId}
-              currentUserId={currentUserId}
               onSelect={onSelect}
               onAddChild={onAddChild}
               onDelete={onDelete}
@@ -221,7 +216,17 @@ export function PageSidebar({
                 <rect width="18" height="18" x="3" y="3" rx="2" /><path d="M7 7h10" /><path d="M7 12h10" /><path d="M7 17h10" />
               </svg>
             </span>
-            <span className="font-medium text-white/90">Executive Committee</span>
+            <span className="font-medium text-white/90">Executive Board</span>
+          </Link>
+          <Link href="/app/board/files" onClick={onClose} className={`glass-nav-item border border-indigo-500/15 shadow-[0_0_8px_rgba(99,102,241,0.06)] hover:bg-indigo-500/10 ${pathname === "/app/board/files" ? "bg-indigo-500/20 text-white shadow-inner" : ""}`}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-sky-600">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" x2="12" y1="3" y2="15" />
+              </svg>
+            </span>
+            <span className="font-medium text-white/90">Executive Files</span>
           </Link>
         </div>
         <span className="glass-pill mb-2 w-fit px-2 py-1">Pages</span>
@@ -238,7 +243,6 @@ export function PageSidebar({
             nodes={tree}
             depth={0}
             selectedId={selectedId}
-            currentUserId={currentUserId}
             onSelect={goPage}
             onAddChild={(pid) => void handleCreatePage(pid)}
             onDelete={onDelete}

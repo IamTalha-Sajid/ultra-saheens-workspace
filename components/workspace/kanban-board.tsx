@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useFeedback } from "@/components/ui/feedback-provider";
@@ -21,6 +21,7 @@ type Ticket = {
     description: string;
     status: "Todo" | "In progress" | "Blocked" | "Done";
     assigneeId?: User;
+    assigneeIds?: User[];
     creatorId: User;
     createdAt: string;
     estimate?: string;
@@ -112,6 +113,13 @@ function avatarGradient(name: string): string {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
+function getTicketAssignees(ticket: Ticket): User[] {
+    if (Array.isArray(ticket.assigneeIds) && ticket.assigneeIds.length > 0) {
+        return ticket.assigneeIds;
+    }
+    return ticket.assigneeId ? [ticket.assigneeId] : [];
+}
+
 export function KanbanBoard() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -119,11 +127,14 @@ export function KanbanBoard() {
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState<Ticket["status"] | null>(null);
     const [newTitle, setNewTitle] = useState("");
-    const [filterUserId, setFilterUserId] = useState<string | null>(null);
-    const [filterStatus, setFilterStatus] = useState<Ticket["status"] | null>(null);
-    const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
-    const [statusMenuPos, setStatusMenuPos] = useState({ top: 0, left: 0 });
-    const statusBtnRef = useRef<HTMLButtonElement>(null);
+    const [filterAssigneeIds, setFilterAssigneeIds] = useState<string[]>([]);
+    const [filterStatuses, setFilterStatuses] = useState<Ticket["status"][]>([]);
+    const [filterDueDate, setFilterDueDate] = useState<string>("");
+    const [filterPastDue, setFilterPastDue] = useState(false);
+    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+    const [activeFilterType, setActiveFilterType] = useState<"assignee" | "status" | "dueDate" | "pastDue" | null>(null);
+    const filterBtnRef = useRef<HTMLButtonElement>(null);
+    const [filterMenuPos, setFilterMenuPos] = useState({ top: 0, left: 0 });
     const [showArchived, setShowArchived] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: keyof Ticket | "assignee"; direction: "asc" | "desc" } | null>(null);
     const { data: session } = useSession();
@@ -131,20 +142,23 @@ export function KanbanBoard() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+    const isDetailOpen = selectedTicketId !== null;
 
     useEffect(() => {
         const tid = searchParams.get("ticketId");
         if (tid) setSelectedTicketId(tid);
     }, [searchParams]);
 
-    const handleCloseModal = () => {
+    const handleCloseModal = (hasChanges?: boolean) => {
         setSelectedTicketId(null);
         const params = new URLSearchParams(searchParams.toString());
         params.delete("ticketId");
         const query = params.toString() ? `?${params.toString()}` : "";
         router.push(query || "/app/board", { scroll: false });
-        // Refresh board to reflect changes
-        void fetchBoard();
+        // Only refresh board if changes were made
+        if (hasChanges) {
+            void fetchBoard();
+        }
     };
 
     const handleOpenTicket = (id: string) => {
@@ -197,8 +211,10 @@ export function KanbanBoard() {
             let bValue: any;
 
             if (key === "assignee") {
-                aValue = a.assigneeId ? (a.assigneeId.name || a.assigneeId.email).toLowerCase() : "";
-                bValue = b.assigneeId ? (b.assigneeId.name || b.assigneeId.email).toLowerCase() : "";
+                const aAssignee = getTicketAssignees(a)[0];
+                const bAssignee = getTicketAssignees(b)[0];
+                aValue = aAssignee ? (aAssignee.name || aAssignee.email).toLowerCase() : "";
+                bValue = bAssignee ? (bAssignee.name || bAssignee.email).toLowerCase() : "";
             } else if (key === "priority") {
                 aValue = priorityOrder[a.priority ?? "Medium"] || 0;
                 bValue = priorityOrder[b.priority ?? "Medium"] || 0;
@@ -223,7 +239,7 @@ export function KanbanBoard() {
             body: JSON.stringify({ 
                 title: newTitle, 
                 status,
-                assigneeId: filterUserId // Auto-assign to filtered user if present
+                assigneeIds: filterAssigneeIds // Auto-assign to filtered users if present
             }),
         });
         if (res.ok) {
@@ -277,6 +293,13 @@ export function KanbanBoard() {
         }
     };
 
+    const selectedAssigneeNames = useMemo(
+        () => users
+            .filter((u) => filterAssigneeIds.includes(u._id))
+            .map((u) => u.name || u.email.split("@")[0]),
+        [users, filterAssigneeIds]
+    );
+
     if (loading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
@@ -285,10 +308,34 @@ export function KanbanBoard() {
         );
     }
 
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const toggleAssigneeFilter = (id: string) => {
+        setFilterAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    };
+    const toggleStatusFilter = (status: Ticket["status"]) => {
+        setFilterStatuses((prev) => (prev.includes(status) ? prev.filter((x) => x !== status) : [...prev, status]));
+    };
+    const clearAllFilters = () => {
+        setFilterAssigneeIds([]);
+        setFilterStatuses([]);
+        setFilterDueDate("");
+        setFilterPastDue(false);
+    };
+
+    const activeFiltersCount = (filterAssigneeIds.length > 0 ? 1 : 0)
+        + (filterStatuses.length > 0 ? 1 : 0)
+        + (filterDueDate ? 1 : 0)
+        + (filterPastDue ? 1 : 0);
+
     const filteredTickets = tickets.filter((t) => {
-        const matchesUser = !filterUserId || t.assigneeId?._id === filterUserId;
-        const matchesStatus = !filterStatus || t.status === filterStatus;
-        return matchesUser && matchesStatus;
+        const assignees = getTicketAssignees(t);
+        const dueDate = t.estimate ? t.estimate.split("T")[0] : "";
+        const matchesAssignee = filterAssigneeIds.length === 0 || assignees.some((a) => filterAssigneeIds.includes(a._id));
+        const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(t.status);
+        const matchesDueDate = !filterDueDate || dueDate === filterDueDate;
+        const isPastDue = Boolean(dueDate) && dueDate < todayKey && t.status !== "Done";
+        const matchesPastDue = !filterPastDue || isPastDue;
+        return matchesAssignee && matchesStatus && matchesDueDate && matchesPastDue;
     });
 
     const finalTickets = viewMode === "table" ? getSortedTickets(filteredTickets) : filteredTickets;
@@ -307,121 +354,214 @@ export function KanbanBoard() {
     };
 
     return (
-        <div className="flex h-full flex-col gap-4 overflow-hidden">
-            {/* ── User filter bar ── */}
-            <div className="flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-[var(--surface-mid)] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 no-scrollbar">
-                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-white/30">
-                    Filter
-                </span>
-                <button
-                    type="button"
-                    onClick={() => setFilterUserId(null)}
-                    className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${filterUserId === null
-                        ? "border-violet-500/40 bg-violet-500/15 text-white shadow-[0_0_12px_rgba(139,92,246,0.15)]"
-                        : "border-white/8 bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white"
-                        }`}
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                    Everyone
-                </button>
-                {users.map((u) => {
-                    const displayName = u.name || u.email.split("@")[0];
-                    const isActive = filterUserId === u._id;
-                    const gradient = avatarGradient(displayName);
-                    return (
-                        <button
-                            key={u._id}
-                            type="button"
-                            onClick={() => setFilterUserId(isActive ? null : u._id)}
-                            title={u.email}
-                            className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${isActive
-                                ? "border-violet-500/40 bg-violet-500/15 text-white shadow-[0_0_12px_rgba(139,92,246,0.15)]"
-                                : "border-white/8 bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white"
-                                }`}
-                        >
-                            <span className={`flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-[10px] font-bold text-white ring-1 ring-white/20`}>
-                                {displayName.charAt(0).toUpperCase()}
-                            </span>
-                            {displayName}
-                        </button>
-                    );
-                })}
-
-                <div className="h-4 w-px bg-white/10" />
-
-                <div className="h-4 w-px bg-white/10" />
-
+        <div
+            className={`relative flex h-full flex-col gap-4 overflow-hidden transition-[padding] duration-300 ${
+                isDetailOpen ? "md:pr-[min(72vw,1100px)]" : "md:pr-0"
+            }`}
+        >
+            {/* ── Professional filter bar ── */}
+            <div
+                className={`flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-[var(--surface-mid)] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 no-scrollbar transition-all ${
+                    isDetailOpen ? "ring-1 ring-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.2)]" : ""
+                }`}
+            >
                 <div className="relative flex items-center gap-2">
-                    <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-white/30">
-                        Status
-                    </span>
                     <button
-                        ref={statusBtnRef}
+                        ref={filterBtnRef}
                         type="button"
                         onClick={() => {
-                            if (!isStatusMenuOpen && statusBtnRef.current) {
-                                const rect = statusBtnRef.current.getBoundingClientRect();
-                                setStatusMenuPos({ top: rect.bottom + 8, left: rect.left });
+                            if (!isFilterMenuOpen && filterBtnRef.current) {
+                                const rect = filterBtnRef.current.getBoundingClientRect();
+                                setFilterMenuPos({ top: rect.bottom + 8, left: rect.left });
                             }
-                            setIsStatusMenuOpen(!isStatusMenuOpen);
+                            setIsFilterMenuOpen((v) => !v);
+                            if (!isFilterMenuOpen) setActiveFilterType(null);
                         }}
-                        className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${filterStatus
-                            ? "border-violet-500/40 bg-violet-500/15 text-white shadow-[0_0_12px_rgba(139,92,246,0.15)]"
-                            : "border-white/8 bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white"
-                            }`}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+                            activeFiltersCount > 0
+                                ? "border-violet-500/40 bg-violet-500/15 text-white shadow-[0_0_12px_rgba(139,92,246,0.15)]"
+                                : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.06] hover:text-white"
+                        }`}
                     >
-                        {filterStatus && (
-                            <span className={`h-2 w-2 rounded-full ${COL_THEME[filterStatus]?.dot}`} />
-                        )}
-                        {filterStatus || "All Statuses"}
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`h-3 w-3 transition-transform ${isStatusMenuOpen ? "rotate-180" : ""}`}>
-                            <path d="m6 9 6 6 6-6" />
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                            <path d="M3 6h18" /><path d="M7 12h10" /><path d="M10 18h4" />
                         </svg>
+                        Filter
+                        {activeFiltersCount > 0 && (
+                            <span className="rounded-full bg-violet-400/25 px-1.5 py-0.5 text-[10px] font-bold text-violet-200">{activeFiltersCount}</span>
+                        )}
                     </button>
 
-                    {isStatusMenuOpen && (
+                    {activeFiltersCount > 0 && (
+                        <button
+                            type="button"
+                            onClick={clearAllFilters}
+                            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white"
+                        >
+                            Clear Filters
+                        </button>
+                    )}
+
+                    {isFilterMenuOpen && (
                         <>
+                            <div className="fixed inset-0 z-[450]" onClick={() => setIsFilterMenuOpen(false)} />
                             <div
-                                className="fixed inset-0 z-[60] cursor-default"
-                                onClick={() => setIsStatusMenuOpen(false)}
-                            />
-                            <div 
-                                className="fixed z-[70] w-48 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--surface-overlay)] p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200"
-                                style={{ top: statusMenuPos.top, left: statusMenuPos.left }}
+                                className="fixed z-[500] w-[320px] rounded-2xl border border-white/[0.12] bg-[var(--surface-overlay)] p-2.5 shadow-[0_24px_70px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                                style={{ top: filterMenuPos.top, left: filterMenuPos.left }}
                             >
-                                <button
-                                    onClick={() => {
-                                        setFilterStatus(null);
-                                        setIsStatusMenuOpen(false);
-                                    }}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white"
-                                >
-                                    <div className="flex h-4 w-4 items-center justify-center rounded border border-dashed border-white/20">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-white/20" />
+                                {!activeFilterType ? (
+                                    <div className="space-y-1.5">
+                                        <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white/35">Choose Filter</p>
+                                        <button type="button" onClick={() => setActiveFilterType("assignee")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-white/80 transition-all hover:border-violet-400/30 hover:bg-violet-500/10 hover:text-white">
+                                            <span className="flex items-center gap-2">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-500/20 text-violet-300">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                                        <circle cx="9" cy="7" r="4" />
+                                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                                    </svg>
+                                                </span>
+                                                By assignee
+                                            </span>
+                                            <span className="text-white/40 transition-transform group-hover:translate-x-0.5">›</span>
+                                        </button>
+                                        <button type="button" onClick={() => setActiveFilterType("status")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-white/80 transition-all hover:border-indigo-400/30 hover:bg-indigo-500/10 hover:text-white">
+                                            <span className="flex items-center gap-2">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                                                        <path d="M2 20h.01" />
+                                                        <path d="M7 20v-4" />
+                                                        <path d="M12 20v-8" />
+                                                        <path d="M17 20V8" />
+                                                        <path d="M22 4v16" />
+                                                    </svg>
+                                                </span>
+                                                By status
+                                            </span>
+                                            <span className="text-white/40 transition-transform group-hover:translate-x-0.5">›</span>
+                                        </button>
+                                        <button type="button" onClick={() => setActiveFilterType("dueDate")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-white/80 transition-all hover:border-amber-400/30 hover:bg-amber-500/10 hover:text-white">
+                                            <span className="flex items-center gap-2">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                                                        <circle cx="12" cy="12" r="10" />
+                                                        <polyline points="12 6 12 12 16 14" />
+                                                    </svg>
+                                                </span>
+                                                By due date
+                                            </span>
+                                            <span className="text-white/40 transition-transform group-hover:translate-x-0.5">›</span>
+                                        </button>
+                                        <button type="button" onClick={() => setActiveFilterType("pastDue")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-white/80 transition-all hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-white">
+                                            <span className="flex items-center gap-2">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-rose-500/20 text-rose-300">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
+                                                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                                                        <line x1="4" x2="4" y1="22" y2="15" />
+                                                    </svg>
+                                                </span>
+                                                By past due
+                                            </span>
+                                            <span className="text-white/40 transition-transform group-hover:translate-x-0.5">›</span>
+                                        </button>
                                     </div>
-                                    All Statuses
-                                </button>
-                                <div className="my-1 h-px bg-white/5" />
-                                {COLUMNS.map((col) => (
-                                    <button
-                                        key={col}
-                                        onClick={() => {
-                                            setFilterStatus(col);
-                                            setIsStatusMenuOpen(false);
-                                        }}
-                                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white"
-                                    >
-                                        <div className={`h-4 w-4 rounded-full border border-white/10 ${COL_THEME[col]?.dot}`} />
-                                        {col}
-                                    </button>
-                                ))}
+                                ) : (
+                                    <div className="space-y-2">
+                                        <button type="button" onClick={() => setActiveFilterType(null)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white">← Back</button>
+                                        {activeFilterType === "assignee" && (
+                                            <div className="max-h-60 space-y-1 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.015] p-1">
+                                                {users.map((u) => {
+                                                    const displayName = u.name || u.email.split("@")[0];
+                                                    const active = filterAssigneeIds.includes(u._id);
+                                                    return (
+                                                        <button
+                                                            key={u._id}
+                                                            type="button"
+                                                            onClick={() => toggleAssigneeFilter(u._id)}
+                                                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${active ? "bg-violet-500/20 text-white ring-1 ring-violet-400/30" : "text-white/75 hover:bg-white/[0.06] hover:text-white"}`}
+                                                        >
+                                                            <span className={`h-2 w-2 rounded-full ${active ? "bg-violet-300" : "bg-white/25"}`} />
+                                                            <span className="truncate">{displayName}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        {activeFilterType === "status" && (
+                                            <div className="space-y-1 rounded-xl border border-white/10 bg-white/[0.015] p-1">
+                                                {COLUMNS.map((col) => {
+                                                    const active = filterStatuses.includes(col);
+                                                    return (
+                                                        <button
+                                                            key={col}
+                                                            type="button"
+                                                            onClick={() => toggleStatusFilter(col)}
+                                                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${active ? "bg-violet-500/20 text-white ring-1 ring-violet-400/30" : "text-white/75 hover:bg-white/[0.06] hover:text-white"}`}
+                                                        >
+                                                            <span className={`h-2 w-2 rounded-full ${COL_THEME[col]?.dot}`} />
+                                                            {col}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        {activeFilterType === "dueDate" && (
+                                            <div className="space-y-2 px-2 pb-1">
+                                                <label className="text-[11px] font-semibold uppercase tracking-wider text-white/35">Due date</label>
+                                                <input
+                                                    type="date"
+                                                    value={filterDueDate}
+                                                    onChange={(e) => setFilterDueDate(e.target.value)}
+                                                    className="glass-input w-full py-2 text-sm [color-scheme:dark]"
+                                                />
+                                                {filterDueDate && (
+                                                    <button type="button" onClick={() => setFilterDueDate("")} className="text-xs text-white/60 hover:text-white">Clear due date filter</button>
+                                                )}
+                                            </div>
+                                        )}
+                                        {activeFilterType === "pastDue" && (
+                                            <div className="px-2 pb-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFilterPastDue((v) => !v)}
+                                                    className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors ${filterPastDue ? "border-rose-500/40 bg-rose-500/15 text-rose-200" : "border-white/10 text-white/75 hover:bg-white/[0.06] hover:text-white"}`}
+                                                >
+                                                    {filterPastDue ? "Past due only: ON" : "Past due only: OFF"}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
                 </div>
+
+                {activeFiltersCount > 0 && (
+                    <div className="flex items-center gap-2">
+                        {selectedAssigneeNames.length > 0 && (
+                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/75">
+                                Assignee: {selectedAssigneeNames.join(", ")}
+                            </span>
+                        )}
+                        {filterStatuses.length > 0 && (
+                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/75">
+                                Status: {filterStatuses.join(", ")}
+                            </span>
+                        )}
+                        {filterDueDate && (
+                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/75">
+                                Due: {filterDueDate}
+                            </span>
+                        )}
+                        {filterPastDue && (
+                            <span className="rounded-md border border-rose-500/25 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200">
+                                Past due
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 <div className="ml-auto flex items-center gap-3">
                     <div className="flex items-center rounded-lg border border-white/10 bg-[var(--surface-overlay)] p-1 backdrop-blur-md">
@@ -491,8 +631,10 @@ export function KanbanBoard() {
                                 {/* Cards */}
                                 <div className="flex min-h-[100px] flex-1 flex-col gap-2.5 overflow-y-auto">
                                     {colTickets.map((t) => {
-                                        const assigneeName = t.assigneeId
-                                            ? (t.assigneeId.name || t.assigneeId.email.split("@")[0])
+                                        const assignees = getTicketAssignees(t);
+                                        const primaryAssignee = assignees[0];
+                                        const assigneeName = primaryAssignee
+                                            ? (primaryAssignee.name || primaryAssignee.email.split("@")[0])
                                             : null;
                                         return (
                                             <div
@@ -500,7 +642,11 @@ export function KanbanBoard() {
                                                 draggable
                                                 onDragStart={(e) => handleDragStart(e, t._id)}
                                                 onClick={() => handleOpenTicket(t._id)}
-                                                className={`group relative cursor-pointer rounded-xl border-l-[3px] border border-white/[0.06] bg-[var(--surface-raised)] p-3.5 transition-all hover:bg-[var(--surface-overlay)] hover:shadow-lg active:cursor-grabbing ${theme.cardAccent}`}
+                                                className={`group relative cursor-pointer rounded-xl border-l-[3px] border bg-[var(--surface-raised)] p-3.5 transition-all hover:bg-[var(--surface-overlay)] hover:shadow-lg active:cursor-grabbing ${
+                                                    t._id === selectedTicketId
+                                                        ? "border-violet-400/40 shadow-[0_0_0_1px_rgba(167,139,250,0.45)] bg-[var(--surface-overlay)]"
+                                                        : "border-white/[0.06]"
+                                                } ${theme.cardAccent}`}
                                             >
                                                 <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                                                     <button
@@ -545,7 +691,7 @@ export function KanbanBoard() {
                                                                 {assigneeName.charAt(0).toUpperCase()}
                                                             </span>
                                                             <span className="max-w-[80px] truncate text-[10px] font-medium text-white/50">
-                                                                {assigneeName}
+                                                                {assignees.length > 1 ? `${assigneeName} +${assignees.length - 1}` : assigneeName}
                                                             </span>
                                                         </div>
                                                     ) : (
@@ -635,14 +781,18 @@ export function KanbanBoard() {
                         </thead>
                         <tbody className="divide-y divide-white/[0.04]">
                             {finalTickets.map((t) => {
-                                const assigneeName = t.assigneeId
-                                    ? (t.assigneeId.name || t.assigneeId.email.split("@")[0])
+                                const assignees = getTicketAssignees(t);
+                                const primaryAssignee = assignees[0];
+                                const assigneeName = primaryAssignee
+                                    ? (primaryAssignee.name || primaryAssignee.email.split("@")[0])
                                     : null;
                                 return (
-                                    <tr 
+                                    <tr
                                         key={t._id} 
                                         onClick={() => handleOpenTicket(t._id)}
-                                        className="group cursor-pointer transition-colors hover:bg-white/[0.03]"
+                                        className={`group cursor-pointer transition-colors hover:bg-white/[0.03] ${
+                                            t._id === selectedTicketId ? "bg-violet-500/[0.08]" : ""
+                                        }`}
                                     >
                                         <td className="py-3.5 pl-5 pr-2">
                                             <span className="text-[11px] font-bold text-violet-400/70 shrink-0">US-{t.sid}</span>
@@ -662,7 +812,7 @@ export function KanbanBoard() {
                                                         {assigneeName.charAt(0).toUpperCase()}
                                                     </span>
                                                     <span className="truncate text-xs font-medium text-white/70">
-                                                        {assigneeName}
+                                                        {assignees.length > 1 ? `${assigneeName} +${assignees.length - 1}` : assigneeName}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -776,13 +926,10 @@ export function KanbanBoard() {
 
             {/* ── Ticket Detail Modal ── */}
             {selectedTicketId && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-6 md:p-10">
-                    <div 
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-                        onClick={handleCloseModal}
-                    />
-                    <div className="relative z-10 h-full w-full max-w-7xl overflow-hidden rounded-none sm:rounded-3xl border-x-0 sm:border border-white/10 bg-[#0a0a0c] shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom sm:zoom-in-95 sm:fade-in duration-300">
-                        <TicketDetail 
+                <div className="fixed inset-y-0 right-0 z-[350] w-full border-l border-white/10 bg-[#09090c] shadow-[-24px_0_50px_rgba(0,0,0,0.48)] animate-in slide-in-from-right duration-300 md:w-[min(72vw,1100px)]">
+                    <div className="pointer-events-none absolute inset-y-0 -left-6 w-6 bg-gradient-to-l from-transparent to-black/30" />
+                    <div className="h-full overflow-hidden">
+                        <TicketDetail
                             ticketId={selectedTicketId} 
                             onClose={handleCloseModal}
                         />

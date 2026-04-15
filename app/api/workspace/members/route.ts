@@ -15,8 +15,9 @@ export async function GET() {
     const users = await User.find({}, "name email username createdAt designation").lean();
 
     const usersWithStats = await Promise.all(users.map(async (user) => {
-        const ticketCount = await Ticket.countDocuments({ assigneeId: user._id, archived: false });
-        const doneCount = await Ticket.countDocuments({ assigneeId: user._id, status: "Done", archived: false });
+        const assigneeFilter = { $or: [{ assigneeIds: user._id }, { assigneeId: user._id }] };
+        const ticketCount = await Ticket.countDocuments({ ...assigneeFilter, archived: false });
+        const doneCount = await Ticket.countDocuments({ ...assigneeFilter, status: "Done", archived: false });
 
         return {
             ...user,

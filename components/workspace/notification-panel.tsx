@@ -256,12 +256,21 @@ export function NotificationPanel() {
                   {items.map((n) => (
                     <li key={n.id}>
                       <div
-                        className={`w-full rounded-xl border px-3.5 py-3 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset] backdrop-blur-xl transition-all ${n.read
+                        className={`w-full rounded-xl border px-3.5 py-3 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset] backdrop-blur-xl transition-all cursor-pointer ${n.read
                           ? "border-white/[0.1] bg-[rgba(255,255,255,0.04)] opacity-70"
                           : n.type === "ticket_assigned"
                             ? "border-violet-500/40 bg-violet-500/[0.12] shadow-[0_0_12px_rgba(139,92,246,0.15)]"
                             : "border-emerald-500/40 bg-emerald-500/[0.12] shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                           }`}
+                        onClick={() => {
+                          if ((n.type === "ticket_assigned" || n.type === "ticket_comment") && n.ticketId) {
+                            // Mark as read if not already read
+                            if (!n.read) {
+                              void toggleRead(n.id, n.read);
+                            }
+                            window.location.href = `/app/board/ticket/${n.ticketId}`;
+                          }
+                        }}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
@@ -315,14 +324,24 @@ export function NotificationPanel() {
                             <a
                               href={`/app/board/ticket/${n.ticketId}`}
                               className={`text-xs font-medium hover:underline transition-colors ${n.type === "ticket_assigned" ? "text-violet-300 hover:text-violet-200" : "text-indigo-300 hover:text-indigo-200"}`}
-                              onClick={() => setOpen(false)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Mark as read if not already read
+                                if (!n.read) {
+                                  void toggleRead(n.id, n.read);
+                                }
+                                setOpen(false);
+                              }}
                             >
                               View ticket →
                             </a>
                           ) : <span />}
                           <button
                             type="button"
-                            onClick={() => void toggleRead(n.id, n.read)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void toggleRead(n.id, n.read);
+                            }}
                             className="text-xs font-medium text-[var(--xanadu)] hover:text-white hover:underline transition-colors focus:outline-none"
                           >
                             {n.read ? "Mark as unread" : "Mark as read"}

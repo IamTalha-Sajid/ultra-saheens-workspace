@@ -20,15 +20,30 @@ type PopulatedUser = {
   username?: string;
 };
 
+function isPopulatedUser(u: unknown): u is PopulatedUser {
+  return typeof u === "object" && u !== null && "email" in u;
+}
+
 function serializeTicket(
   t: TicketDoc & {
     assigneeId?: PopulatedUser | null;
+    assigneeIds?: Array<PopulatedUser | mongoose.Types.ObjectId> | null;
     creatorId: PopulatedUser;
   }
 ) {
-  const assignee = t.assigneeId;
+  const assigneeList = Array.isArray(t.assigneeIds)
+    ? t.assigneeIds
+        .filter((u) => isPopulatedUser(u))
+        .map((u) => userToJson(u))
+    : [];
+  const fallbackAssignee =
+    isPopulatedUser(t.assigneeId)
+      ? userToJson(t.assigneeId)
+      : undefined;
+  const assigneeIds = assigneeList.length > 0 ? assigneeList : fallbackAssignee ? [fallbackAssignee] : [];
   return {
     _id: String(t._id),
+    sid: t.sid,
     title: t.title,
     description: t.description,
     status: t.status,
@@ -36,7 +51,8 @@ function serializeTicket(
     type: t.type,
     labels: t.labels,
     estimate: t.estimate,
-    assigneeId: assignee ? userToJson(assignee) : undefined,
+    assigneeId: assigneeIds[0],
+    assigneeIds,
     creatorId: userToJson(t.creatorId),
     createdAt: t.createdAt.toISOString(),
   };
@@ -71,6 +87,7 @@ export async function GET(
 
   const ticket = await Ticket.findById(oid)
     .populate("assigneeId", "name email username")
+    .populate("assigneeIds", "name email username")
     .populate("creatorId", "name email username")
     .lean();
 
@@ -92,7 +109,11 @@ export async function GET(
 
   return NextResponse.json({
     ticket: serializeTicket(
-      ticket as unknown as TicketDoc & { assigneeId?: PopulatedUser | null; creatorId: PopulatedUser }
+      ticket as unknown as TicketDoc & {
+        assigneeId?: PopulatedUser | null;
+        assigneeIds?: Array<PopulatedUser | mongoose.Types.ObjectId> | null;
+        creatorId: PopulatedUser
+      }
     ),
     comments: commentPayload,
   });
@@ -109,6 +130,12 @@ function parseAssigneeId(raw: unknown): mongoose.Types.ObjectId | null | undefin
     if (mongoose.Types.ObjectId.isValid(id)) return new mongoose.Types.ObjectId(id);
   }
   return undefined;
+}
+
+function parseAssigneeIds(raw: unknown): mongoose.Types.ObjectId[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const uniq = [...new Set(raw.map((x) => String(x)).filter((id) => mongoose.Types.ObjectId.isValid(id)))];
+  return uniq.map((id) => new mongoose.Types.ObjectId(id));
 }
 
 export async function PATCH(
@@ -133,8 +160,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const prevAssignee =
-    ticket.assigneeId != null ? String(ticket.assigneeId) : null;
+  const prevAssignees = new Set<string>(
+    Array.isArray(ticket.assigneeIds) && ticket.assigneeIds.length > 0
+      ? ticket.assigneeIds.map((assigneeId: mongoose.Types.ObjectId) => String(assigneeId))
+      : ticket.assigneeId
+        ? [String(ticket.assigneeId)]
+        : []
+  );
 
   if (body.title !== undefined) {
     const t = String(body.title).trim();
@@ -183,8 +215,25 @@ export async function PATCH(
   }
 
   const nextAssigneeOid = parseAssigneeId(body.assigneeId);
+  const nextAssigneeOids = parseAssigneeIds(body.assigneeIds);
+
+  if (nextAssigneeOids !== undefined) {
+    if (nextAssigneeOids.length === 0) {
+      ticket.assigneeIds = [];
+      ticket.set("assigneeId", undefined);
+    } else {
+      const validUsers = await User.find({ _id: { $in: nextAssigneeOids } }).select("_id").lean();
+      const valid = new Set(validUsers.map((u) => String(u._id)));
+      if (valid.size !== nextAssigneeOids.length) {
+        return NextResponse.json({ error: "One or more assignees not found" }, { status: 400 });
+      }
+      ticket.assigneeIds = nextAssigneeOids;
+      ticket.assigneeId = nextAssigneeOids[0];
+    }
+  } else
   if (nextAssigneeOid !== undefined) {
     if (nextAssigneeOid === null) {
+      ticket.assigneeIds = [];
       ticket.set("assigneeId", undefined);
     } else {
       const u = await User.findById(nextAssigneeOid).select("_id").lean();
@@ -192,42 +241,50 @@ export async function PATCH(
         return NextResponse.json({ error: "Assignee not found" }, { status: 400 });
       }
       ticket.assigneeId = nextAssigneeOid;
+      ticket.assigneeIds = [nextAssigneeOid];
     }
   }
 
   await ticket.save();
 
-  const nextAssignee =
-    ticket.assigneeId != null ? String(ticket.assigneeId) : null;
-  if (
-    nextAssignee &&
-    nextAssignee !== prevAssignee &&
-    nextAssignee !== userId
-  ) {
+  const nextAssignees = new Set<string>(
+    Array.isArray(ticket.assigneeIds) && ticket.assigneeIds.length > 0
+      ? ticket.assigneeIds.map((assigneeId: mongoose.Types.ObjectId) => String(assigneeId))
+      : ticket.assigneeId
+        ? [String(ticket.assigneeId)]
+        : []
+  );
+  const addedAssignees = [...nextAssignees].filter((id) => !prevAssignees.has(id) && id !== userId);
+  if (addedAssignees.length > 0) {
     const session = await auth();
     const actorName =
       session?.user?.name?.trim() ||
       session?.user?.email?.trim() ||
       "Someone";
-    await MentionNotification.create({
-      recipientId: new mongoose.Types.ObjectId(nextAssignee),
-      actorId: new mongoose.Types.ObjectId(userId),
-      pageTitle: ticket.title,
-      mentionLabel: "assigned you to a ticket",
-      actorName,
-      read: false,
-      type: "ticket_assigned",
-      ticketId: ticket._id,
-    });
+    await MentionNotification.insertMany(
+      addedAssignees.map((assignee) => ({
+        recipientId: new mongoose.Types.ObjectId(assignee),
+        actorId: new mongoose.Types.ObjectId(userId),
+        pageTitle: ticket.title,
+        mentionLabel: "assigned you to a ticket",
+        actorName,
+        read: false,
+        type: "ticket_assigned" as const,
+        ticketId: ticket._id,
+      }))
+    );
 
-    // Send Email Alert
-    await sendEmailNotification({
-      recipientId: new mongoose.Types.ObjectId(nextAssignee),
-      actorName,
-      ticketTitle: ticket.title,
-      ticketId: ticket._id,
-      type: "ticket_assigned"
-    });
+    await Promise.all(
+      addedAssignees.map((assignee) =>
+        sendEmailNotification({
+          recipientId: new mongoose.Types.ObjectId(assignee),
+          actorName,
+          ticketTitle: ticket.title,
+          ticketId: ticket._id,
+          type: "ticket_assigned",
+        })
+      )
+    );
   }
 
   // Handle Mentions in Description (only if changed)
@@ -300,6 +357,7 @@ export async function PATCH(
 
   const populated = await Ticket.findById(ticket._id)
     .populate("assigneeId", "name email username")
+    .populate("assigneeIds", "name email username")
     .populate("creatorId", "name email username")
     .lean();
 
@@ -308,6 +366,7 @@ export async function PATCH(
       ? serializeTicket(
           populated as unknown as TicketDoc & {
             assigneeId?: PopulatedUser | null;
+            assigneeIds?: Array<PopulatedUser | mongoose.Types.ObjectId> | null;
             creatorId: PopulatedUser;
           }
         )
