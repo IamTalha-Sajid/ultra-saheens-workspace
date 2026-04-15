@@ -175,6 +175,8 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
     const [commentEmpty, setCommentEmpty] = useState(true);
     const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
     const [hasPersistedChanges, setHasPersistedChanges] = useState(false);
+    const [postingComment, setPostingComment] = useState(false);
+    const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
     const [assigneeQuery, setAssigneeQuery] = useState("");
     const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
 
@@ -393,23 +395,28 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
     }, [ticket, ticketId]);
 
     const handlePostComment = async () => {
-        if (!commentEditor) return;
+        if (!commentEditor || postingComment) return;
         const html = commentEditor.getHTML();
         if (html === "<p></p>" || !commentEditor.getText().trim()) return;
 
         const contentToSave = JSON.stringify(commentEditor.getJSON());
 
-        const res = await fetch(`/api/tickets/${ticketId}/comments`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: contentToSave }),
-        });
-        if (res.ok) {
-            const data = await res.json();
-            setComments((prev) => [...prev, data.comment]);
-            setHasPersistedChanges(true);
-            commentEditor.commands.clearContent(true);
-            setCommentEmpty(true);
+        setPostingComment(true);
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/comments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: contentToSave }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setComments((prev) => [...prev, data.comment]);
+                setHasPersistedChanges(true);
+                commentEditor.commands.clearContent(true);
+                setCommentEmpty(true);
+            }
+        } finally {
+            setPostingComment(false);
         }
     };
 
@@ -421,12 +428,17 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
             destructive: true,
         });
         if (!ok) return;
-        const res = await fetch(`/api/tickets/${ticketId}/comments/${commentId}`, {
-            method: "DELETE",
-        });
-        if (res.ok) {
-            setComments((prev) => prev.filter((c) => c._id !== commentId));
-            setHasPersistedChanges(true);
+        setDeletingCommentId(commentId);
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/comments/${commentId}`, {
+                method: "DELETE",
+            });
+            if (res.ok) {
+                setComments((prev) => prev.filter((c) => c._id !== commentId));
+                setHasPersistedChanges(true);
+            }
+        } finally {
+            setDeletingCommentId(null);
         }
     };
 
@@ -588,10 +600,15 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                                 {session?.user?.id === c.authorId._id && (
                                     <button
                                         onClick={() => handleDeleteComment(c._id)}
+                                        disabled={deletingCommentId === c._id}
                                         className="h-fit rounded-lg p-1 text-[var(--text-muted)] opacity-0 transition-all hover:bg-rose-500/10 hover:text-rose-400 group-hover:opacity-100"
                                         title="Delete comment"
                                     >
-                                        <XIcon className="h-4 w-4" />
+                                        {deletingCommentId === c._id ? (
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                        ) : (
+                                            <XIcon className="h-4 w-4" />
+                                        )}
                                     </button>
                                 )}
                             </div>
@@ -614,10 +631,17 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                             </div>
                             <button
                                 onClick={handlePostComment}
-                                disabled={commentEmpty}
+                                disabled={commentEmpty || postingComment}
                                 className="glass-button-primary w-auto min-w-[140px] self-end px-5 py-2 text-sm disabled:opacity-50"
                             >
-                                Post Comment
+                                {postingComment ? (
+                                    <span className="inline-flex items-center gap-2">
+                                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                        Posting...
+                                    </span>
+                                ) : (
+                                    "Post Comment"
+                                )}
                             </button>
                         </div>
                     </div>
