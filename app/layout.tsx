@@ -26,8 +26,8 @@ export const metadata: Metadata = {
   description: "Workspace for the Ultra Shaheens team",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.png",
-    apple: "/icon-192x192.png",
+    icon: "/ultra-shaheens-logo.png",
+    apple: "/ultra-shaheens-logo.png",
   },
   appleWebApp: {
     capable: true,

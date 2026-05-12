@@ -2,6 +2,7 @@ import { Schema, models, model, type Types } from "mongoose";
 
 export interface CommitteeUploadDoc {
   userId: Types.ObjectId;
+  folderId?: Types.ObjectId | null;
   title: string;
   details: string;
   originalName: string;
@@ -16,6 +17,7 @@ export interface CommitteeUploadDoc {
 const CommitteeUploadSchema = new Schema<CommitteeUploadDoc>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    folderId: { type: Schema.Types.ObjectId, ref: "CommitteeFolder", default: null, index: true },
     title: { type: String, required: true, trim: true, maxlength: 180 },
     details: { type: String, default: "", maxlength: 2000 },
     originalName: { type: String, required: true },

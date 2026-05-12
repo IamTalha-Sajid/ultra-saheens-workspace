@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useFeedback } from "@/components/ui/feedback-provider";
@@ -120,23 +121,37 @@ function getTicketAssignees(ticket: Ticket): User[] {
     return ticket.assigneeId ? [ticket.assigneeId] : [];
 }
 
+const BOARD_FILTER_KEY = "kanban_board_filters";
+function readBoardFilters(): Record<string, unknown> {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem(BOARD_FILTER_KEY) ?? "{}") as Record<string, unknown>; }
+    catch { return {}; }
+}
+
 export function KanbanBoard() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [users, setUsers] = useState<User[]>([]);
-    const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
+    const [viewMode, setViewMode] = useState<"kanban" | "table">(() => (readBoardFilters().viewMode as "kanban" | "table") ?? "kanban");
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState<Ticket["status"] | null>(null);
     const [newTitle, setNewTitle] = useState("");
-    const [filterAssigneeIds, setFilterAssigneeIds] = useState<string[]>([]);
-    const [filterStatuses, setFilterStatuses] = useState<Ticket["status"][]>([]);
-    const [filterDueDate, setFilterDueDate] = useState<string>("");
-    const [filterPastDue, setFilterPastDue] = useState(false);
+    const [filterAssigneeIds, setFilterAssigneeIds] = useState<string[]>(() => (readBoardFilters().filterAssigneeIds as string[]) ?? []);
+    const [filterStatuses, setFilterStatuses] = useState<Ticket["status"][]>(() => (readBoardFilters().filterStatuses as Ticket["status"][]) ?? []);
+    const [filterDueDate, setFilterDueDate] = useState<string>(() => (readBoardFilters().filterDueDate as string) ?? "");
+    const [filterPastDue, setFilterPastDue] = useState<boolean>(() => (readBoardFilters().filterPastDue as boolean) ?? false);
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [activeFilterType, setActiveFilterType] = useState<"assignee" | "status" | "dueDate" | "pastDue" | null>(null);
     const filterBtnRef = useRef<HTMLButtonElement>(null);
     const [filterMenuPos, setFilterMenuPos] = useState({ top: 0, left: 0 });
-    const [showArchived, setShowArchived] = useState(false);
-    const [sortConfig, setSortConfig] = useState<{ key: keyof Ticket | "assignee"; direction: "asc" | "desc" } | null>(null);
+    const [showArchived, setShowArchived] = useState<boolean>(() => (readBoardFilters().showArchived as boolean) ?? false);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Ticket | "assignee"; direction: "asc" | "desc" } | null>(() => (readBoardFilters().sortConfig as { key: keyof Ticket | "assignee"; direction: "asc" | "desc" } | null) ?? null);
+    const [activeColumnFilter, setActiveColumnFilter] = useState<string | null>(null);
+    const [columnFilterPos, setColumnFilterPos] = useState({ top: 0, left: 0 });
+    const [filterPriorities, setFilterPriorities] = useState<string[]>(() => (readBoardFilters().filterPriorities as string[]) ?? []);
+    const [filterTypes, setFilterTypes] = useState<string[]>(() => (readBoardFilters().filterTypes as string[]) ?? []);
+    const [filterTitle, setFilterTitle] = useState<string>(() => (readBoardFilters().filterTitle as string) ?? "");
+    const [editingDeadlineId, setEditingDeadlineId] = useState<string | null>(null);
+    const [editingDeadlinePos, setEditingDeadlinePos] = useState({ top: 0, left: 0 });
     const { data: session } = useSession();
     const { confirm } = useFeedback();
     const router = useRouter();
@@ -148,6 +163,16 @@ export function KanbanBoard() {
         const tid = searchParams.get("ticketId");
         if (tid) setSelectedTicketId(tid);
     }, [searchParams]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(BOARD_FILTER_KEY, JSON.stringify({
+                viewMode, filterAssigneeIds, filterStatuses, filterDueDate,
+                filterPastDue, filterPriorities, filterTypes, filterTitle,
+                showArchived, sortConfig,
+            }));
+        } catch { /* storage unavailable */ }
+    }, [viewMode, filterAssigneeIds, filterStatuses, filterDueDate, filterPastDue, filterPriorities, filterTypes, filterTitle, showArchived, sortConfig]);
 
     const handleCloseModal = (hasChanges?: boolean) => {
         setSelectedTicketId(null);
@@ -198,6 +223,34 @@ export function KanbanBoard() {
             direction = "desc";
         }
         setSortConfig({ key, direction });
+    };
+
+    const openDeadlinePicker = (id: string, el: HTMLElement) => {
+        const rect = el.getBoundingClientRect();
+        const left = Math.min(rect.left, window.innerWidth - 220);
+        setEditingDeadlinePos({ top: rect.bottom + 6, left });
+        setEditingDeadlineId(id);
+    };
+
+    const updateDeadline = async (id: string, estimate: string | null) => {
+        setTickets((prev) => prev.map((t) => t._id === id ? { ...t, estimate: estimate ?? undefined } : t));
+        setEditingDeadlineId(null);
+        await fetch(`/api/tickets/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ estimate }),
+        });
+    };
+
+    const openColumnFilter = (col: string, e: React.MouseEvent<HTMLTableCellElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setColumnFilterPos({ top: rect.bottom + 4, left: rect.left });
+        setActiveColumnFilter((prev) => (prev === col ? null : col));
+    };
+
+    const sortBy = (key: keyof Ticket | "assignee", direction: "asc" | "desc") => {
+        setSortConfig({ key, direction });
+        setActiveColumnFilter(null);
     };
 
     const getSortedTickets = (ticketsToSort: Ticket[]) => {
@@ -315,17 +368,29 @@ export function KanbanBoard() {
     const toggleStatusFilter = (status: Ticket["status"]) => {
         setFilterStatuses((prev) => (prev.includes(status) ? prev.filter((x) => x !== status) : [...prev, status]));
     };
+    const togglePriorityFilter = (p: string) => {
+        setFilterPriorities((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
+    };
+    const toggleTypeFilter = (t: string) => {
+        setFilterTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+    };
     const clearAllFilters = () => {
         setFilterAssigneeIds([]);
         setFilterStatuses([]);
         setFilterDueDate("");
         setFilterPastDue(false);
+        setFilterPriorities([]);
+        setFilterTypes([]);
+        setFilterTitle("");
     };
 
     const activeFiltersCount = (filterAssigneeIds.length > 0 ? 1 : 0)
         + (filterStatuses.length > 0 ? 1 : 0)
         + (filterDueDate ? 1 : 0)
-        + (filterPastDue ? 1 : 0);
+        + (filterPastDue ? 1 : 0)
+        + (filterPriorities.length > 0 ? 1 : 0)
+        + (filterTypes.length > 0 ? 1 : 0)
+        + (filterTitle ? 1 : 0);
 
     const filteredTickets = tickets.filter((t) => {
         const assignees = getTicketAssignees(t);
@@ -335,7 +400,10 @@ export function KanbanBoard() {
         const matchesDueDate = !filterDueDate || dueDate === filterDueDate;
         const isPastDue = Boolean(dueDate) && dueDate < todayKey && t.status !== "Done";
         const matchesPastDue = !filterPastDue || isPastDue;
-        return matchesAssignee && matchesStatus && matchesDueDate && matchesPastDue;
+        const matchesPriority = filterPriorities.length === 0 || filterPriorities.includes(t.priority || "Medium");
+        const matchesType = filterTypes.length === 0 || filterTypes.includes(t.type || "Task");
+        const matchesTitle = !filterTitle || t.title.toLowerCase().includes(filterTitle.toLowerCase());
+        return matchesAssignee && matchesStatus && matchesDueDate && matchesPastDue && matchesPriority && matchesType && matchesTitle;
     });
 
     const finalTickets = viewMode === "table" ? getSortedTickets(filteredTickets) : filteredTickets;
@@ -678,12 +746,24 @@ export function KanbanBoard() {
                                                         <span className="text-[10px] text-white/30" title="Created at">
                                                             {new Date(t.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                                                         </span>
-                                                        {t.estimate && (
-                                                            <span className="flex items-center gap-1 rounded-md border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 shadow-sm" title="Deadline">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                                                {new Date(t.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                                                            </span>
-                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); openDeadlinePicker(t._id, e.currentTarget); }}
+                                                            title={t.estimate ? "Edit deadline" : "Add deadline"}
+                                                            className="flex items-center"
+                                                        >
+                                                            {t.estimate ? (
+                                                                <span className="flex items-center gap-1 rounded-md border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 shadow-sm hover:border-rose-400/50 hover:bg-rose-500/20 transition-colors">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                                                    {new Date(t.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="flex items-center gap-0.5 rounded-md border border-dashed border-white/10 px-1.5 py-0.5 text-[10px] text-white/25 opacity-0 transition-opacity group-hover:opacity-100 hover:border-violet-400/30 hover:text-violet-400">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                                                    Due
+                                                                </span>
+                                                            )}
+                                                        </button>
                                                     </div>
                                                     {assigneeName ? (
                                                         <div className="flex items-center gap-1.5" title={assigneeName}>
@@ -755,26 +835,44 @@ export function KanbanBoard() {
                     <table className="w-full text-left text-sm text-white/90 whitespace-nowrap">
                         <thead className="sticky top-0 z-20 bg-[var(--surface-mid)] shadow-sm border-b border-white/10">
                             <tr className="text-[11px] font-bold uppercase tracking-wider text-white/40">
-                                <th onClick={() => requestSort("sid")} className="py-3.5 pl-5 pr-2 font-semibold w-20 cursor-pointer group hover:text-white transition-colors">
-                                    <div className="flex items-center">ID<SortIndicator column="sid" /></div>
+                                <th onClick={(e) => openColumnFilter("sid", e)} className="py-3.5 pl-5 pr-2 font-semibold w-20 cursor-pointer select-none group hover:text-white transition-colors">
+                                    <div className="flex items-center gap-1">ID <SortIndicator column="sid" /></div>
                                 </th>
-                                <th onClick={() => requestSort("title")} className="py-3.5 px-4 font-semibold w-full min-w-[200px] sm:min-w-[280px] cursor-pointer group hover:text-white transition-colors">
-                                    <div className="flex items-center">Task<SortIndicator column="title" /></div>
+                                <th onClick={(e) => openColumnFilter("title", e)} className="py-3.5 px-4 font-semibold w-full min-w-[200px] sm:min-w-[280px] cursor-pointer select-none group hover:text-white transition-colors">
+                                    <div className="flex items-center gap-1">
+                                        Task <SortIndicator column="title" />
+                                        {filterTitle && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
+                                    </div>
                                 </th>
-                                <th onClick={() => requestSort("status")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors">
-                                    <div className="flex items-center">Status<SortIndicator column="status" /></div>
+                                <th onClick={(e) => openColumnFilter("status", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors">
+                                    <div className="flex items-center gap-1">
+                                        Status <SortIndicator column="status" />
+                                        {filterStatuses.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
+                                    </div>
                                 </th>
-                                <th onClick={() => requestSort("assignee")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors hidden sm:table-cell">
-                                    <div className="flex items-center">Assignee<SortIndicator column="assignee" /></div>
+                                <th onClick={(e) => openColumnFilter("assignee", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden sm:table-cell">
+                                    <div className="flex items-center gap-1">
+                                        Assignee <SortIndicator column="assignee" />
+                                        {filterAssigneeIds.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
+                                    </div>
                                 </th>
-                                <th onClick={() => requestSort("priority")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors hidden md:table-cell">
-                                    <div className="flex items-center">Priority<SortIndicator column="priority" /></div>
+                                <th onClick={(e) => openColumnFilter("priority", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden md:table-cell">
+                                    <div className="flex items-center gap-1">
+                                        Priority <SortIndicator column="priority" />
+                                        {filterPriorities.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
+                                    </div>
                                 </th>
-                                <th onClick={() => requestSort("estimate")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors hidden lg:table-cell">
-                                    <div className="flex items-center">Deadline<SortIndicator column="estimate" /></div>
+                                <th onClick={(e) => openColumnFilter("estimate", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden lg:table-cell">
+                                    <div className="flex items-center gap-1">
+                                        Deadline <SortIndicator column="estimate" />
+                                        {filterDueDate && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
+                                    </div>
                                 </th>
-                                <th onClick={() => requestSort("type")} className="px-4 py-3.5 font-semibold cursor-pointer group hover:text-white transition-colors hidden xl:table-cell">
-                                    <div className="flex items-center">Type<SortIndicator column="type" /></div>
+                                <th onClick={(e) => openColumnFilter("type", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden xl:table-cell">
+                                    <div className="flex items-center gap-1">
+                                        Type <SortIndicator column="type" />
+                                        {filterTypes.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
+                                    </div>
                                 </th>
                                 <th className="py-3.5 pr-5 pl-4 font-semibold text-right">Actions</th>
                             </tr>
@@ -827,14 +925,18 @@ export function KanbanBoard() {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3.5 hidden lg:table-cell">
+                                        <td
+                                            className="px-4 py-3.5 hidden lg:table-cell"
+                                            onClick={(e) => { e.stopPropagation(); openDeadlinePicker(t._id, e.currentTarget); }}
+                                        >
                                             {t.estimate ? (
-                                                <span className="flex items-center gap-1.5 text-xs text-white/60">
+                                                <span className="group/dl flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors cursor-pointer">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                     {new Date(t.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 opacity-0 group-hover/dl:opacity-60" aria-hidden><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                                 </span>
                                             ) : (
-                                                <span className="text-xs text-white/30 italic">-</span>
+                                                <span className="cursor-pointer text-xs text-white/20 italic hover:text-violet-400 transition-colors">+ Add deadline</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-3.5 hidden xl:table-cell">
@@ -903,7 +1005,7 @@ export function KanbanBoard() {
                                     ) : (
                                         <button
                                             onClick={() => setIsAdding("Todo")}
-                                            className="flex w-full items-center gap-2 px-5 py-3 text-xs font-medium text-white/30 hover:bg-white/[0.02] hover:text-white/60 transition-colors"
+                                            className="flex w-full items-center justify-center gap-2 px-5 py-3 text-xs font-medium text-white/30 hover:bg-white/[0.02] hover:text-white/60 transition-colors"
                                         >
                                             <span className="text-lg leading-none">+</span>
                                             Add card
@@ -922,6 +1024,172 @@ export function KanbanBoard() {
                         </tbody>
                     </table>
                 </div>
+            )}
+
+            {/* ── Deadline picker ── */}
+            {editingDeadlineId && typeof document !== "undefined" && createPortal(
+                <>
+                    <div className="fixed inset-0 z-[300]" onClick={() => setEditingDeadlineId(null)} />
+                    <div
+                        className="fixed z-[310] w-52 rounded-2xl border border-white/[0.12] bg-[rgba(18,18,20,0.97)] p-3 shadow-[0_16px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+                        style={{ top: editingDeadlinePos.top, left: editingDeadlinePos.left }}
+                    >
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/35">Set Deadline</p>
+                        <input
+                            type="date"
+                            autoFocus
+                            defaultValue={tickets.find((t) => t._id === editingDeadlineId)?.estimate?.split("T")[0] ?? ""}
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    void updateDeadline(editingDeadlineId, new Date(e.target.value + "T12:00:00").toISOString());
+                                }
+                            }}
+                            className="glass-input w-full py-1.5 text-sm [color-scheme:dark]"
+                        />
+                        {tickets.find((t) => t._id === editingDeadlineId)?.estimate && (
+                            <button
+                                type="button"
+                                onClick={() => void updateDeadline(editingDeadlineId, null)}
+                                className="mt-2 w-full text-center text-xs text-rose-400/60 transition-colors hover:text-rose-300"
+                            >
+                                Remove deadline
+                            </button>
+                        )}
+                    </div>
+                </>,
+                document.body
+            )}
+
+            {/* ── Column filter dropdown ── */}
+            {activeColumnFilter && typeof document !== "undefined" && createPortal(
+                <>
+                    <div className="fixed inset-0 z-[200]" onClick={() => setActiveColumnFilter(null)} />
+                    <div
+                        className="fixed z-[210] w-64 rounded-2xl border border-white/[0.12] bg-[rgba(18,18,20,0.97)] p-2 shadow-[0_16px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+                        style={{ top: columnFilterPos.top, left: columnFilterPos.left }}
+                    >
+                        {/* Sort */}
+                        <div className="mb-1.5">
+                            <p className="px-2 pb-1 pt-0.5 text-[10px] font-bold uppercase tracking-wider text-white/30">Sort</p>
+                            <div className="flex gap-1 px-1">
+                                <button
+                                    type="button"
+                                    onClick={() => sortBy(activeColumnFilter as keyof Ticket | "assignee", "asc")}
+                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${sortConfig?.key === activeColumnFilter && sortConfig.direction === "asc" ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/30" : "text-white/60 hover:bg-white/[0.06] hover:text-white"}`}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m18 15-6-6-6 6"/></svg>
+                                    A → Z
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => sortBy(activeColumnFilter as keyof Ticket | "assignee", "desc")}
+                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${sortConfig?.key === activeColumnFilter && sortConfig.direction === "desc" ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/30" : "text-white/60 hover:bg-white/[0.06] hover:text-white"}`}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m6 9 6 6 6-6"/></svg>
+                                    Z → A
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Filter — only for columns that support it */}
+                        {activeColumnFilter !== "sid" && (
+                            <div className="border-t border-white/[0.08] pt-1.5">
+                                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/30">Filter</p>
+
+                                {activeColumnFilter === "title" && (
+                                    <div className="px-1 pb-1">
+                                        <input
+                                            type="text"
+                                            autoFocus
+                                            placeholder="Search tasks…"
+                                            value={filterTitle}
+                                            onChange={(e) => setFilterTitle(e.target.value)}
+                                            className="glass-input w-full py-1.5 text-sm"
+                                        />
+                                        {filterTitle && (
+                                            <button type="button" onClick={() => setFilterTitle("")} className="mt-1 text-[11px] text-white/40 hover:text-white">Clear</button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeColumnFilter === "status" && (
+                                    <div className="space-y-0.5 px-1 pb-1">
+                                        {(["Todo", "In progress", "Done", "Blocked"] as Ticket["status"][]).map((s) => (
+                                            <button key={s} type="button" onClick={() => toggleStatusFilter(s)}
+                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterStatuses.includes(s) ? "bg-violet-500/20 text-white ring-1 ring-violet-400/25" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
+                                                <span className={`h-2 w-2 rounded-full ${COL_THEME[s]?.dot}`} />
+                                                {s}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {activeColumnFilter === "assignee" && (
+                                    <div className="max-h-48 space-y-0.5 overflow-y-auto px-1 pb-1">
+                                        {users.map((u) => {
+                                            const name = u.name || u.email.split("@")[0];
+                                            const active = filterAssigneeIds.includes(u._id);
+                                            return (
+                                                <button key={u._id} type="button" onClick={() => toggleAssigneeFilter(u._id)}
+                                                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${active ? "bg-violet-500/20 text-white ring-1 ring-violet-400/25" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
+                                                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(name)} text-[9px] font-bold text-white`}>
+                                                        {name.charAt(0).toUpperCase()}
+                                                    </span>
+                                                    <span className="truncate">{name}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {activeColumnFilter === "priority" && (
+                                    <div className="space-y-0.5 px-1 pb-1">
+                                        {["Highest", "High", "Medium", "Low", "Lowest"].map((p) => (
+                                            <button key={p} type="button" onClick={() => togglePriorityFilter(p)}
+                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterPriorities.includes(p) ? "bg-violet-500/20 text-white ring-1 ring-violet-400/25" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
+                                                <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_COLORS[p]?.replace("text-", "bg-") ?? "bg-zinc-500"}`} />
+                                                <span className={PRIORITY_COLORS[p]}>{p}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {activeColumnFilter === "estimate" && (
+                                    <div className="space-y-2 px-1 pb-1">
+                                        <input
+                                            type="date"
+                                            value={filterDueDate}
+                                            onChange={(e) => setFilterDueDate(e.target.value)}
+                                            className="glass-input w-full py-1.5 text-sm [color-scheme:dark]"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setFilterPastDue((v) => !v)}
+                                            className={`w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${filterPastDue ? "border-rose-500/40 bg-rose-500/15 text-rose-200" : "border-white/10 text-white/60 hover:bg-white/[0.06] hover:text-white"}`}
+                                        >
+                                            {filterPastDue ? "Past due only: ON" : "Past due only: OFF"}
+                                        </button>
+                                        {(filterDueDate || filterPastDue) && (
+                                            <button type="button" onClick={() => { setFilterDueDate(""); setFilterPastDue(false); }} className="text-[11px] text-white/40 hover:text-white">Clear</button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeColumnFilter === "type" && (
+                                    <div className="space-y-0.5 px-1 pb-1">
+                                        {(["Task", "Bug", "Story", "Epic"] as const).map((tp) => (
+                                            <button key={tp} type="button" onClick={() => toggleTypeFilter(tp)}
+                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterTypes.includes(tp) ? "bg-violet-500/20 text-white ring-1 ring-violet-400/25" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
+                                                <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase ${TYPE_COLORS[tp]}`}>{tp}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </>,
+                document.body
             )}
 
             {/* ── Ticket Detail Modal ── */}

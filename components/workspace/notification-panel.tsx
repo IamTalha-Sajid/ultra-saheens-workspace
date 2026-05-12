@@ -262,11 +262,10 @@ export function NotificationPanel() {
                             ? "border-violet-500/40 bg-violet-500/[0.12] shadow-[0_0_12px_rgba(139,92,246,0.15)]"
                             : "border-emerald-500/40 bg-emerald-500/[0.12] shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                           }`}
-                        onClick={() => {
+                        onClick={async () => {
                           if ((n.type === "ticket_assigned" || n.type === "ticket_comment") && n.ticketId) {
-                            // Mark as read if not already read
                             if (!n.read) {
-                              void toggleRead(n.id, n.read);
+                              await toggleRead(n.id, n.read);
                             }
                             window.location.href = `/app/board/ticket/${n.ticketId}`;
                           }
@@ -324,13 +323,14 @@ export function NotificationPanel() {
                             <a
                               href={`/app/board/ticket/${n.ticketId}`}
                               className={`text-xs font-medium hover:underline transition-colors ${n.type === "ticket_assigned" ? "text-violet-300 hover:text-violet-200" : "text-indigo-300 hover:text-indigo-200"}`}
-                              onClick={(e) => {
+                              onClick={async (e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
-                                // Mark as read if not already read
                                 if (!n.read) {
-                                  void toggleRead(n.id, n.read);
+                                  await toggleRead(n.id, n.read);
                                 }
                                 setOpen(false);
+                                window.location.href = `/app/board/ticket/${n.ticketId}`;
                               }}
                             >
                               View ticket →

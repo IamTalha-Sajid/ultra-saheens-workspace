@@ -228,6 +228,15 @@ export function PageSidebar({
             </span>
             <span className="font-medium text-white/90">Executive Files</span>
           </Link>
+          <Link href="/app/board/links" onClick={onClose} className={`glass-nav-item border border-teal-500/15 shadow-[0_0_8px_rgba(20,184,166,0.06)] hover:bg-teal-500/10 ${pathname === "/app/board/links" ? "bg-teal-500/20 text-white shadow-inner" : ""}`}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-teal-500 to-emerald-600">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+            </span>
+            <span className="font-medium text-white/90">Executive Links</span>
+          </Link>
         </div>
         <span className="glass-pill mb-2 w-fit px-2 py-1">Pages</span>
         {loading ? (

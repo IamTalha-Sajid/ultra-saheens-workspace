@@ -133,6 +133,28 @@ function XIcon({ className }: { className?: string }) {
     );
 }
 
+function PencilIcon({ className }: { className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+            <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>
+            <path d="m15 5 4 4"/>
+        </svg>
+    );
+}
+
+function extractCommentText(content: string): string {
+    if (!content.startsWith('{"type":"doc"')) return content;
+    try {
+        type TipTapNode = { text?: string; content?: TipTapNode[] };
+        const walk = (node: TipTapNode): string => {
+            if (node.text) return node.text;
+            if (node.content) return node.content.map(walk).join('');
+            return '';
+        };
+        return walk(JSON.parse(content) as TipTapNode).trim();
+    } catch { return content; }
+}
+
 /* ── Colours ── */
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -177,6 +199,9 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
     const [hasPersistedChanges, setHasPersistedChanges] = useState(false);
     const [postingComment, setPostingComment] = useState(false);
     const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+    const [editingCommentText, setEditingCommentText] = useState("");
+    const [savingCommentEdit, setSavingCommentEdit] = useState(false);
     const [assigneeQuery, setAssigneeQuery] = useState("");
     const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
 
@@ -442,6 +467,40 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
         }
     };
 
+    const handleStartEditComment = (commentId: string, content: string) => {
+        setEditingCommentId(commentId);
+        setEditingCommentText(extractCommentText(content));
+    };
+
+    const handleCancelEditComment = () => {
+        setEditingCommentId(null);
+        setEditingCommentText("");
+    };
+
+    const handleSaveEditComment = async () => {
+        if (!editingCommentId || !editingCommentText.trim()) return;
+        setSavingCommentEdit(true);
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/comments/${editingCommentId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: editingCommentText.trim() }),
+            });
+            if (res.ok) {
+                setComments((prev) =>
+                    prev.map((c) =>
+                        c._id === editingCommentId ? { ...c, content: editingCommentText.trim() } : c
+                    )
+                );
+                setEditingCommentId(null);
+                setEditingCommentText("");
+                setHasPersistedChanges(true);
+            }
+        } finally {
+            setSavingCommentEdit(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
@@ -581,38 +640,84 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                     </div>
 
                     <div className="flex flex-col gap-4">
-                        {comments.map((c) => (
-                            <div key={c._id} className="group flex gap-4">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-sm font-bold text-white shadow-lg shadow-violet-500/20 ring-1 ring-white/10">
-                                    {(c.authorId.name || c.authorId.email).charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex flex-1 flex-col gap-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-colors hover:bg-white/[0.04]">
-                                    <div className="flex items-center gap-3 text-xs md:text-sm">
-                                        <span className="font-semibold text-white">{c.authorId.name || c.authorId.email}</span>
-                                        <span className="text-[10px] text-[var(--text-muted)] md:text-xs">
-                                            {new Date(c.createdAt).toLocaleString(undefined, {
-                                                month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-                                            })}
-                                        </span>
+                        {comments.map((c) => {
+                            const isEditing = editingCommentId === c._id;
+                            const isOwn = session?.user?.id === c.authorId._id;
+                            return (
+                                <div key={c._id} className="group flex gap-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-sm font-bold text-white shadow-lg shadow-violet-500/20 ring-1 ring-white/10">
+                                        {(c.authorId.name || c.authorId.email).charAt(0).toUpperCase()}
                                     </div>
-                                    <CommentRenderer content={c.content} />
-                                </div>
-                                {session?.user?.id === c.authorId._id && (
-                                    <button
-                                        onClick={() => handleDeleteComment(c._id)}
-                                        disabled={deletingCommentId === c._id}
-                                        className="h-fit rounded-lg p-1 text-[var(--text-muted)] opacity-0 transition-all hover:bg-rose-500/10 hover:text-rose-400 group-hover:opacity-100"
-                                        title="Delete comment"
-                                    >
-                                        {deletingCommentId === c._id ? (
-                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                    <div className="flex flex-1 flex-col gap-2 rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-colors hover:bg-white/[0.04]">
+                                        <div className="flex items-center gap-3 text-xs md:text-sm">
+                                            <span className="font-semibold text-white">{c.authorId.name || c.authorId.email}</span>
+                                            <span className="text-[10px] text-[var(--text-muted)] md:text-xs">
+                                                {new Date(c.createdAt).toLocaleString(undefined, {
+                                                    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+                                                })}
+                                            </span>
+                                        </div>
+                                        {isEditing ? (
+                                            <div className="flex flex-col gap-2">
+                                                <textarea
+                                                    value={editingCommentText}
+                                                    onChange={(e) => setEditingCommentText(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Escape") handleCancelEditComment();
+                                                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void handleSaveEditComment();
+                                                    }}
+                                                    autoFocus
+                                                    rows={3}
+                                                    className="glass-input w-full resize-none py-2 text-sm leading-relaxed"
+                                                />
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => void handleSaveEditComment()}
+                                                        disabled={savingCommentEdit || !editingCommentText.trim()}
+                                                        className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
+                                                    >
+                                                        {savingCommentEdit && <div className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />}
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        onClick={handleCancelEditComment}
+                                                        className="px-2 py-1.5 text-xs text-white/35 hover:text-white"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <span className="text-[10px] text-white/20">Ctrl+Enter to save</span>
+                                                </div>
+                                            </div>
                                         ) : (
-                                            <XIcon className="h-4 w-4" />
+                                            <CommentRenderer content={c.content} />
                                         )}
-                                    </button>
-                                )}
-                            </div>
-                        ))}
+                                    </div>
+                                    {isOwn && !isEditing && (
+                                        <div className="flex flex-col gap-1 opacity-0 transition-all group-hover:opacity-100">
+                                            <button
+                                                onClick={() => handleStartEditComment(c._id, c.content)}
+                                                className="h-fit rounded-lg p-1 text-[var(--text-muted)] hover:bg-violet-500/10 hover:text-violet-400"
+                                                title="Edit comment"
+                                            >
+                                                <PencilIcon className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => void handleDeleteComment(c._id)}
+                                                disabled={deletingCommentId === c._id}
+                                                className="h-fit rounded-lg p-1 text-[var(--text-muted)] hover:bg-rose-500/10 hover:text-rose-400"
+                                                title="Delete comment"
+                                            >
+                                                {deletingCommentId === c._id ? (
+                                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                                ) : (
+                                                    <XIcon className="h-4 w-4" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
 
                         {comments.length === 0 && (
                             <p className="py-4 text-center text-sm text-[var(--text-muted)]">

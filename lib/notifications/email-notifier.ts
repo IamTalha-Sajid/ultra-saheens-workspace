@@ -37,7 +37,7 @@ export async function sendEmailNotification({
         }
 
         console.log(`[EmailNotifier] Sending to: ${recipient.email}`);
-        const baseUrl = process.env.AUTH_URL || "http://localhost:3000";
+        const baseUrl = process.env.APP_URL || process.env.AUTH_URL || "http://localhost:3000";
         let actionLink = `${baseUrl}/app/board`;
         
         if (ticketId) {

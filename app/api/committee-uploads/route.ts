@@ -43,22 +43,30 @@ function uploaderToJson(raw: unknown): { _id: string; name: string; email: strin
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const folderIdParam = searchParams.get("folderId");
+
   await connectDB();
-  const rows = await CommitteeUpload.find({})
+  const filter = folderIdParam
+    ? { folderId: new mongoose.Types.ObjectId(folderIdParam) }
+    : { $or: [{ folderId: null }, { folderId: { $exists: false } }] };
+
+  const rows = await CommitteeUpload.find(filter)
     .populate("userId", "name email username")
     .sort({ createdAt: -1 })
-    .limit(40)
+    .limit(200)
     .lean();
 
   return NextResponse.json({
     uploads: rows.map((row) => ({
       _id: String(row._id),
+      folderId: row.folderId ? String(row.folderId) : null,
       title: row.title,
       details: row.details,
       originalName: row.originalName,
@@ -80,6 +88,10 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const title = String(form.get("title") ?? "").trim();
   const details = String(form.get("details") ?? "").trim();
+  const folderIdField = form.get("folderId");
+  const folderId = folderIdField && mongoose.Types.ObjectId.isValid(String(folderIdField))
+    ? new mongoose.Types.ObjectId(String(folderIdField))
+    : null;
   const file = form.get("file");
 
   if (!title) {
@@ -109,6 +121,7 @@ export async function POST(request: Request) {
   await connectDB();
   const created = await CommitteeUpload.create({
     userId: new mongoose.Types.ObjectId(userId),
+    folderId,
     title,
     details,
     originalName: file.name,
