@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+type FolderItem = {
+  _id: string;
+  name: string;
+  parentId: string | null;
+  createdAt: string;
+};
+
 type LinkItem = {
   _id: string;
+  folderId?: string | null;
   title: string;
   url: string;
   description: string;
@@ -11,6 +19,8 @@ type LinkItem = {
   createdAt: string;
   addedBy?: { _id: string; name: string; email: string; username?: string };
 };
+
+type Crumb = { id: string | null; name: string };
 
 function LinkServiceIcon({ url }: { url: string }) {
   let host = "";
@@ -94,24 +104,36 @@ function displayHost(url: string): string {
 }
 
 export function CommitteeLinkSection() {
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: null, name: "Links" }]);
+  const [folders, setFolders] = useState<FolderItem[]>([]);
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [form, setForm] = useState({ title: "", url: "", department: "", description: "" });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const folderNameInputRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (folderId: string | null) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/committee-links");
-      if (!res.ok) throw new Error();
-      const data = (await res.json()) as { links: LinkItem[] };
-      setLinks(data.links ?? []);
+      const folderQ = folderId ? `?parentId=${folderId}` : "";
+      const linkQ = folderId ? `?folderId=${folderId}` : "";
+      const [fRes, lRes] = await Promise.all([
+        fetch(`/api/committee-folders${folderQ}`),
+        fetch(`/api/committee-links${linkQ}`),
+      ]);
+      if (!fRes.ok || !lRes.ok) throw new Error();
+      const [fd, ld] = await Promise.all([fRes.json(), lRes.json()]);
+      setFolders((fd as { folders: FolderItem[] }).folders ?? []);
+      setLinks((ld as { links: LinkItem[] }).links ?? []);
     } catch {
       setError("Could not load links.");
     } finally {
@@ -119,7 +141,46 @@ export function CommitteeLinkSection() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(currentFolderId); }, [load, currentFolderId]);
+
+  const navigateTo = (folder: FolderItem) => {
+    setCrumbs((prev) => {
+      if (prev[prev.length - 1]?.id === folder._id) return prev;
+      return [...prev, { id: folder._id, name: folder.name }];
+    });
+    setCurrentFolderId(folder._id);
+  };
+
+  const navigateCrumb = (i: number) => {
+    const c = crumbs[i];
+    setCrumbs((prev) => prev.slice(0, i + 1));
+    setCurrentFolderId(c.id);
+  };
+
+  const startCreateFolder = () => {
+    setIsCreatingFolder(true);
+    setNewFolderName("");
+    setTimeout(() => folderNameInputRef.current?.focus(), 0);
+  };
+
+  const confirmCreateFolder = async () => {
+    const name = newFolderName.trim();
+    setIsCreatingFolder(false);
+    setNewFolderName("");
+    if (!name) return;
+    const res = await fetch("/api/committee-folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, parentId: currentFolderId }),
+    });
+    if (res.ok) void load(currentFolderId);
+    else setError("Could not create folder.");
+  };
+
+  const deleteFolder = async (id: string) => {
+    setFolders((prev) => prev.filter((f) => f._id !== id));
+    await fetch(`/api/committee-folders/${id}`, { method: "DELETE" });
+  };
 
   const startAdding = () => {
     setIsAdding(true);
@@ -150,12 +211,12 @@ export function CommitteeLinkSection() {
       const res = await fetch("/api/committee-links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, url: normalizedUrl }),
+        body: JSON.stringify({ ...form, url: normalizedUrl, folderId: currentFolderId }),
       });
       const data = (await res.json()) as { error?: string; link?: LinkItem };
       if (!res.ok) { setFormError(data.error ?? "Could not save link"); return; }
       setIsAdding(false);
-      void load();
+      void load(currentFolderId);
     } catch {
       setFormError("Could not save link.");
     } finally {
@@ -168,21 +229,62 @@ export function CommitteeLinkSection() {
     await fetch(`/api/committee-links/${id}`, { method: "DELETE" });
   };
 
-  const isEmpty = !loading && links.length === 0 && !isAdding;
+  const hasContent = folders.length > 0 || links.length > 0 || isCreatingFolder;
+  const isEmpty = !loading && !hasContent && !isAdding;
 
   return (
     <section className="mt-4 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--surface-mid)]">
       {/* Header */}
       <div className="border-b border-white/[0.07] px-4 py-4 md:px-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-white md:text-base">Executive Board Links</h2>
-            <p className="text-xs text-white/45">Share links to Canva designs, Google Drive, reports, and more.</p>
-          </div>
+        <h2 className="text-sm font-semibold text-white md:text-base">Executive Board Links</h2>
+        <p className="text-xs text-white/45">Share links to Canva designs, Google Drive, reports, and more.</p>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 border-b border-white/[0.05] px-4 py-2.5 md:px-5">
+        {/* Breadcrumb */}
+        <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-xs">
+          {crumbs.map((c, i) => (
+            <span key={i} className="flex shrink-0 items-center gap-1">
+              {i > 0 && <span className="text-white/20">/</span>}
+              <button
+                type="button"
+                onClick={() => navigateCrumb(i)}
+                className={`flex items-center gap-1 truncate transition-colors ${
+                  i === crumbs.length - 1
+                    ? "pointer-events-none font-medium text-white/80"
+                    : "text-white/45 hover:text-white"
+                }`}
+              >
+                {i === 0 && (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                )}
+                {c.name}
+              </button>
+            </span>
+          ))}
+        </nav>
+
+        {/* Actions */}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={startCreateFolder}
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/65 transition-all hover:bg-white/[0.07] hover:text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+              <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+              <line x1="12" y1="10" x2="12" y2="16"/><line x1="9" y1="13" x2="15" y2="13"/>
+            </svg>
+            New Folder
+          </button>
           <button
             type="button"
             onClick={startAdding}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-200 shadow-[0_0_12px_rgba(139,92,246,0.12)] transition-all hover:bg-violet-500/25 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-200 shadow-[0_0_12px_rgba(139,92,246,0.12)] transition-all hover:bg-violet-500/25 hover:text-white"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -259,68 +361,79 @@ export function CommitteeLinkSection() {
               {saving && <div className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />}
               Save Link
             </button>
-            <button
-              type="button"
-              onClick={cancelAdding}
-              className="px-3 py-1.5 text-xs text-white/35 hover:text-white"
-            >
+            <button type="button" onClick={cancelAdding} className="px-3 py-1.5 text-xs text-white/35 hover:text-white">
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Column headers */}
-      {links.length > 0 && (
-        <div className="grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.04] px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/25 md:px-5">
-          <span className="w-7" />
-          <span className="pl-2.5">Link</span>
-          <span className="flex items-center gap-6 pr-1">
-            <span className="hidden w-24 sm:block">Added by</span>
-            <span className="hidden w-20 text-right sm:block">Date</span>
-            <span className="w-8" />
-          </span>
-        </div>
-      )}
+      {/* List */}
+      <div className="min-h-[60px]">
+        {/* Column headers */}
+        {hasContent && (
+          <div className="grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.04] px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/25 md:px-5">
+            <span className="w-7" />
+            <span className="pl-2.5">Name</span>
+            <span className="flex items-center gap-6 pr-1">
+              <span className="hidden w-24 sm:block">Added by</span>
+              <span className="hidden w-20 text-right sm:block">Date</span>
+              <span className="w-8" />
+            </span>
+          </div>
+        )}
 
-      {/* Link rows */}
-      {links.map((link) => {
-        const by = link.addedBy?.name || link.addedBy?.email?.split("@")[0] || "—";
-        return (
+        {/* New folder inline row */}
+        {isCreatingFolder && (
+          <div className="flex items-center gap-3 border-b border-white/[0.04] px-4 py-2.5 md:px-5">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 text-amber-400/70">
+              <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15zM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 12h-15a4.483 4.483 0 0 0-3 1.146V10.146z"/>
+            </svg>
+            <input
+              ref={folderNameInputRef}
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void confirmCreateFolder();
+                if (e.key === "Escape") { setIsCreatingFolder(false); setNewFolderName(""); }
+              }}
+              placeholder="Folder name"
+              className="glass-input flex-1 py-1 text-sm"
+              maxLength={180}
+            />
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => void confirmCreateFolder()} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500">
+                Create
+              </button>
+              <button type="button" onClick={() => { setIsCreatingFolder(false); setNewFolderName(""); }} className="px-2 py-1.5 text-xs text-white/35 hover:text-white">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Folder rows */}
+        {folders.map((folder) => (
           <div
-            key={link._id}
-            className="group grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.03] px-4 py-2.5 transition-colors last:border-b-0 hover:bg-white/[0.03] md:px-5"
+            key={folder._id}
+            className="group grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.03] px-4 py-2 transition-colors hover:bg-white/[0.03] md:px-5"
           >
-            <LinkServiceIcon url={link.url} />
-            <a
-              href={link.url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="min-w-0 pl-2.5"
-            >
-              <div className="flex flex-wrap items-center gap-1.5">
-                <p className="truncate text-sm font-medium text-white/85 hover:text-white">{link.title}</p>
-                {link.department && (
-                  <span className="shrink-0 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-300/80">
-                    {link.department}
-                  </span>
-                )}
-              </div>
-              {link.description ? (
-                <p className="mt-0.5 truncate text-[11px] text-white/35">{link.description}</p>
-              ) : (
-                <p className="mt-0.5 truncate text-[11px] text-white/20">{displayHost(link.url)}</p>
-              )}
-            </a>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 text-amber-400/75">
+              <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15zM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 12h-15a4.483 4.483 0 0 0-3 1.146V10.146z"/>
+            </svg>
+            <button type="button" onClick={() => navigateTo(folder)} className="min-w-0 pl-2.5 text-left">
+              <span className="block truncate text-sm font-medium text-white/85 hover:text-white">{folder.name}</span>
+            </button>
             <div className="flex items-center gap-6 pr-1">
-              <span className="hidden w-24 truncate text-xs text-white/40 sm:block">{by}</span>
-              <span className="hidden w-20 text-right text-xs text-white/40 sm:block">
-                {new Date(link.createdAt).toLocaleDateString()}
+              <span className="hidden w-24 text-xs text-white/30 sm:block">—</span>
+              <span className="hidden w-20 text-right text-xs text-white/30 sm:block">
+                {new Date(folder.createdAt).toLocaleDateString()}
               </span>
               <button
                 type="button"
-                onClick={() => void deleteLink(link._id)}
-                title="Remove link"
+                onClick={() => void deleteFolder(folder._id)}
+                title="Delete folder and contents"
                 className="w-8 rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-rose-300 hover:bg-rose-500/10"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
@@ -329,32 +442,76 @@ export function CommitteeLinkSection() {
               </button>
             </div>
           </div>
-        );
-      })}
+        ))}
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center gap-2.5 px-4 py-8 text-xs text-white/35 md:px-5">
-          <div className="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white/55" />
-          Loading…
-        </div>
-      )}
+        {/* Link rows */}
+        {links.map((link) => {
+          const by = link.addedBy?.name || link.addedBy?.email?.split("@")[0] || "—";
+          return (
+            <div
+              key={link._id}
+              className="group grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.03] px-4 py-2.5 transition-colors last:border-b-0 hover:bg-white/[0.03] md:px-5"
+            >
+              <LinkServiceIcon url={link.url} />
+              <a href={link.url} target="_blank" rel="noreferrer noopener" className="min-w-0 pl-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <p className="truncate text-sm font-medium text-white/85 hover:text-white">{link.title}</p>
+                  {link.department && (
+                    <span className="shrink-0 rounded-full border border-violet-500/25 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-300/80">
+                      {link.department}
+                    </span>
+                  )}
+                </div>
+                {link.description ? (
+                  <p className="mt-0.5 truncate text-[11px] text-white/35">{link.description}</p>
+                ) : (
+                  <p className="mt-0.5 truncate text-[11px] text-white/20">{displayHost(link.url)}</p>
+                )}
+              </a>
+              <div className="flex items-center gap-6 pr-1">
+                <span className="hidden w-24 truncate text-xs text-white/40 sm:block">{by}</span>
+                <span className="hidden w-20 text-right text-xs text-white/40 sm:block">
+                  {new Date(link.createdAt).toLocaleDateString()}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void deleteLink(link._id)}
+                  title="Remove link"
+                  className="w-8 rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-rose-300 hover:bg-rose-500/10"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          );
+        })}
 
-      {/* Empty state */}
-      {isEmpty && (
-        <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-white/15">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-            </svg>
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center gap-2.5 px-4 py-8 text-xs text-white/35 md:px-5">
+            <div className="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white/55" />
+            Loading…
           </div>
-          <div>
-            <p className="text-sm font-medium text-white/35">No links yet</p>
-            <p className="text-xs text-white/20">Click &ldquo;Add Link&rdquo; to share a resource</p>
+        )}
+
+        {/* Empty state */}
+        {isEmpty && (
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-white/15">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white/35">No links here yet</p>
+              <p className="text-xs text-white/20">Click &ldquo;Add Link&rdquo; to share a resource</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Error */}
       {error && <p className="px-4 pb-3 text-xs text-rose-300 md:px-5">{error}</p>}

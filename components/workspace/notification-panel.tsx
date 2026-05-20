@@ -318,24 +318,7 @@ export function NotificationPanel() {
                             )}
                           </div>
                         </div>
-                        <div className="mt-3 flex items-center justify-between">
-                          {(n.type === "ticket_assigned" || n.type === "ticket_comment") && n.ticketId ? (
-                            <a
-                              href={`/app/board/ticket/${n.ticketId}`}
-                              className={`text-xs font-medium hover:underline transition-colors ${n.type === "ticket_assigned" ? "text-violet-300 hover:text-violet-200" : "text-indigo-300 hover:text-indigo-200"}`}
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (!n.read) {
-                                  await toggleRead(n.id, n.read);
-                                }
-                                setOpen(false);
-                                window.location.href = `/app/board/ticket/${n.ticketId}`;
-                              }}
-                            >
-                              View ticket →
-                            </a>
-                          ) : <span />}
+                        <div className="mt-3 flex items-center justify-end">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -355,8 +338,7 @@ export function NotificationPanel() {
             </div>
 
             <p className="shrink-0 border-t border-white/[0.08] bg-black/30 px-4 py-2.5 text-[11px] leading-snug text-[var(--text-muted)]">
-              Mentions and task assignments appear here. Click &ldquo;View
-              ticket&rdquo; to jump to a task.
+              Mentions and task assignments appear here. Click a notification to jump to a task.
             </p>
           </div>
         </>,

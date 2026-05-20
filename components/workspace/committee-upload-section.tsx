@@ -82,8 +82,13 @@ export function CommitteeUploadSection() {
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const folderNameInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
+
+  useEffect(() => {
+    folderInputRef.current?.setAttribute("webkitdirectory", "");
+  }, []);
 
   const load = useCallback(async (id: string | null) => {
     setLoading(true);
@@ -109,7 +114,10 @@ export function CommitteeUploadSection() {
   useEffect(() => { void load(currentFolderId); }, [load, currentFolderId]);
 
   const navigateTo = (folder: FolderItem) => {
-    setCrumbs((prev) => [...prev, { id: folder._id, name: folder.name }]);
+    setCrumbs((prev) => {
+      if (prev[prev.length - 1]?.id === folder._id) return prev;
+      return [...prev, { id: folder._id, name: folder.name }];
+    });
     setCurrentFolderId(folder._id);
   };
 
@@ -180,6 +188,76 @@ export function CommitteeUploadSection() {
     );
   }, [load]);
 
+  const uploadFolder = useCallback(async (fileList: File[]) => {
+    if (!fileList.length) return;
+
+    const rootName = fileList[0].webkitRelativePath.split("/")[0];
+
+    const rootRes = await fetch("/api/committee-folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: rootName, parentId: currentFolderId }),
+    });
+    if (!rootRes.ok) { setError("Could not create folder."); return; }
+    const { folder: rootFolder } = await rootRes.json() as { folder: FolderItem };
+
+    const folderIdByPath = new Map<string, string>();
+    folderIdByPath.set(rootName, rootFolder._id);
+    const creating = new Map<string, Promise<string>>();
+
+    const ensureFolder = (parts: string[]): Promise<string> => {
+      const key = parts.join("/");
+      if (folderIdByPath.has(key)) return Promise.resolve(folderIdByPath.get(key)!);
+      if (creating.has(key)) return creating.get(key)!;
+      const p = (async () => {
+        const parentId = await ensureFolder(parts.slice(0, -1));
+        const res = await fetch("/api/committee-folders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: parts[parts.length - 1], parentId }),
+        });
+        const data = await res.json() as { folder: FolderItem };
+        folderIdByPath.set(key, data.folder._id);
+        return data.folder._id;
+      })();
+      creating.set(key, p);
+      return p;
+    };
+
+    const items: UploadingItem[] = fileList.map((f) => ({
+      id: Math.random().toString(36).slice(2),
+      name: f.webkitRelativePath || f.name,
+      status: "uploading" as const,
+    }));
+    setUploading((prev) => [...prev, ...items]);
+
+    await Promise.all(
+      fileList.map(async (file, i) => {
+        const itemId = items[i].id;
+        try {
+          const parts = file.webkitRelativePath.split("/");
+          const folderId = await ensureFolder(parts.slice(0, -1));
+          const form = new FormData();
+          form.append("title", file.name);
+          form.append("file", file);
+          form.append("folderId", folderId);
+          const res = await fetch("/api/committee-uploads", { method: "POST", body: form });
+          const data = await res.json() as { error?: string };
+          if (!res.ok) throw new Error(data?.error ?? "Upload failed");
+          setUploading((prev) => prev.map((it) => it.id === itemId ? { ...it, status: "done" } : it));
+        } catch (err) {
+          setUploading((prev) => prev.map((it) => it.id === itemId
+            ? { ...it, status: "error", error: err instanceof Error ? err.message : "Failed" }
+            : it
+          ));
+        }
+      })
+    );
+
+    void load(currentFolderId);
+    setTimeout(() => setUploading((prev) => prev.filter((it) => it.status !== "done")), 2500);
+  }, [currentFolderId, load]);
+
   const onDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     if (++dragCounter.current === 1) setIsDragging(true);
@@ -193,8 +271,39 @@ export function CommitteeUploadSection() {
     e.preventDefault();
     dragCounter.current = 0;
     setIsDragging(false);
-    const dropped = Array.from(e.dataTransfer.files);
-    if (dropped.length) void uploadFiles(dropped, currentFolderId);
+
+    const readEntry = (entry: FileSystemEntry): Promise<File[]> => {
+      if (entry.isFile) {
+        return new Promise((resolve) => {
+          (entry as FileSystemFileEntry).file((f) => resolve([f]));
+        });
+      }
+      return new Promise((resolve) => {
+        const reader = (entry as FileSystemDirectoryEntry).createReader();
+        reader.readEntries(async (entries) => {
+          const nested = await Promise.all(entries.map(readEntry));
+          resolve(nested.flat());
+        });
+      });
+    };
+
+    const items = Array.from(e.dataTransfer.items);
+    const hasFolder = items.some((item) => item.webkitGetAsEntry()?.isDirectory);
+
+    if (hasFolder) {
+      Promise.all(
+        items.map((item) => {
+          const entry = item.webkitGetAsEntry();
+          return entry ? readEntry(entry) : Promise.resolve<File[]>([]);
+        })
+      ).then((results) => {
+        const allFiles = results.flat();
+        if (allFiles.length) void uploadFiles(allFiles, currentFolderId);
+      });
+    } else {
+      const dropped = Array.from(e.dataTransfer.files);
+      if (dropped.length) void uploadFiles(dropped, currentFolderId);
+    }
   };
 
   const deleteFile = async (id: string) => {
@@ -267,6 +376,29 @@ export function CommitteeUploadSection() {
 
           <button
             type="button"
+            onClick={() => folderInputRef.current?.click()}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-all hover:bg-amber-500/20 hover:text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+              <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+              <path d="M12 10v6"/><path d="M9 13h6"/>
+            </svg>
+            Upload Folder
+          </button>
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const picked = Array.from(e.target.files ?? []);
+              if (picked.length) void uploadFolder(picked);
+              e.target.value = "";
+            }}
+          />
+
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-200 shadow-[0_0_12px_rgba(139,92,246,0.12)] transition-all hover:bg-violet-500/25 hover:text-white"
           >
@@ -275,13 +407,13 @@ export function CommitteeUploadSection() {
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            Upload
+            Upload Files
           </button>
           <input
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
+            accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp"
             className="hidden"
             onChange={(e) => {
               const picked = Array.from(e.target.files ?? []);

@@ -232,9 +232,9 @@ export function KanbanBoard() {
         setEditingDeadlineId(id);
     };
 
-    const updateDeadline = async (id: string, estimate: string | null) => {
+    const updateDeadline = async (id: string, estimate: string | null, close = false) => {
         setTickets((prev) => prev.map((t) => t._id === id ? { ...t, estimate: estimate ?? undefined } : t));
-        setEditingDeadlineId(null);
+        if (close) setEditingDeadlineId(null);
         await fetch(`/api/tickets/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -422,17 +422,9 @@ export function KanbanBoard() {
     };
 
     return (
-        <div
-            className={`relative flex h-full flex-col gap-4 overflow-hidden transition-[padding] duration-300 ${
-                isDetailOpen ? "md:pr-[min(72vw,1100px)]" : "md:pr-0"
-            }`}
-        >
+        <div className="relative flex h-full flex-col gap-4 overflow-hidden" onClick={() => { if (isDetailOpen) handleCloseModal(); }}>
             {/* ── Professional filter bar ── */}
-            <div
-                className={`flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-[var(--surface-mid)] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 no-scrollbar transition-all ${
-                    isDetailOpen ? "ring-1 ring-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.2)]" : ""
-                }`}
-            >
+            <div className="flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-[var(--surface-mid)] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 no-scrollbar">
                 <div className="relative flex items-center gap-2">
                     <button
                         ref={filterBtnRef}
@@ -709,7 +701,7 @@ export function KanbanBoard() {
                                                 key={t._id}
                                                 draggable
                                                 onDragStart={(e) => handleDragStart(e, t._id)}
-                                                onClick={() => handleOpenTicket(t._id)}
+                                                onClick={(e) => { e.stopPropagation(); handleOpenTicket(t._id); }}
                                                 className={`group relative cursor-pointer rounded-xl border-l-[3px] border bg-[var(--surface-raised)] p-3.5 transition-all hover:bg-[var(--surface-overlay)] hover:shadow-lg active:cursor-grabbing ${
                                                     t._id === selectedTicketId
                                                         ? "border-violet-400/40 shadow-[0_0_0_1px_rgba(167,139,250,0.45)] bg-[var(--surface-overlay)]"
@@ -836,45 +828,59 @@ export function KanbanBoard() {
                         <thead className="sticky top-0 z-20 bg-[var(--surface-mid)] shadow-sm border-b border-white/10">
                             <tr className="text-[11px] font-bold uppercase tracking-wider text-white/40">
                                 <th onClick={(e) => openColumnFilter("sid", e)} className="py-3.5 pl-5 pr-2 font-semibold w-20 cursor-pointer select-none group hover:text-white transition-colors">
-                                    <div className="flex items-center gap-1">ID <SortIndicator column="sid" /></div>
+                                    <div className="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/></svg>
+                                        ID <SortIndicator column="sid" />
+                                    </div>
                                 </th>
                                 <th onClick={(e) => openColumnFilter("title", e)} className="py-3.5 px-4 font-semibold w-full min-w-[200px] sm:min-w-[280px] cursor-pointer select-none group hover:text-white transition-colors">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
                                         Task <SortIndicator column="title" />
                                         {filterTitle && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
                                 <th onClick={(e) => openColumnFilter("status", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M2 20h.01"/><path d="M7 20v-4"/><path d="M12 20v-8"/><path d="M17 20V8"/><path d="M22 4v16"/></svg>
                                         Status <SortIndicator column="status" />
                                         {filterStatuses.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
                                 <th onClick={(e) => openColumnFilter("assignee", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden sm:table-cell">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                         Assignee <SortIndicator column="assignee" />
                                         {filterAssigneeIds.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
                                 <th onClick={(e) => openColumnFilter("priority", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden md:table-cell">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
                                         Priority <SortIndicator column="priority" />
                                         {filterPriorities.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
                                 <th onClick={(e) => openColumnFilter("estimate", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden lg:table-cell">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                         Deadline <SortIndicator column="estimate" />
                                         {filterDueDate && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
                                 <th onClick={(e) => openColumnFilter("type", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden xl:table-cell">
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
                                         Type <SortIndicator column="type" />
                                         {filterTypes.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
-                                <th className="py-3.5 pr-5 pl-4 font-semibold text-right">Actions</th>
+                                <th className="py-3.5 pr-5 pl-4 font-semibold text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                        Actions
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.04]">
@@ -887,7 +893,7 @@ export function KanbanBoard() {
                                 return (
                                     <tr
                                         key={t._id} 
-                                        onClick={() => handleOpenTicket(t._id)}
+                                        onClick={(e) => { e.stopPropagation(); handleOpenTicket(t._id); }}
                                         className={`group cursor-pointer transition-colors hover:bg-white/[0.03] ${
                                             t._id === selectedTicketId ? "bg-violet-500/[0.08]" : ""
                                         }`}
@@ -1049,9 +1055,10 @@ export function KanbanBoard() {
                         {tickets.find((t) => t._id === editingDeadlineId)?.estimate && (
                             <button
                                 type="button"
-                                onClick={() => void updateDeadline(editingDeadlineId, null)}
-                                className="mt-2 w-full text-center text-xs text-rose-400/60 transition-colors hover:text-rose-300"
+                                onClick={() => void updateDeadline(editingDeadlineId, null, true)}
+                                className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/35 bg-rose-500/15 px-4 py-2.5 text-sm font-semibold text-rose-300 transition-colors hover:border-rose-400/55 hover:bg-rose-500/25 hover:text-rose-200"
                             >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                 Remove deadline
                             </button>
                         )}
@@ -1192,17 +1199,39 @@ export function KanbanBoard() {
                 document.body
             )}
 
-            {/* ── Ticket Detail Modal ── */}
+            {/* ── Ticket Detail Panel ── */}
             {selectedTicketId && (
-                <div className="fixed inset-y-0 right-0 z-[350] w-full border-l border-white/10 bg-[#09090c] shadow-[-24px_0_50px_rgba(0,0,0,0.48)] animate-in slide-in-from-right duration-300 md:w-[min(72vw,1100px)]">
-                    <div className="pointer-events-none absolute inset-y-0 -left-6 w-6 bg-gradient-to-l from-transparent to-black/30" />
-                    <div className="h-full overflow-hidden">
-                        <TicketDetail
-                            ticketId={selectedTicketId} 
-                            onClose={handleCloseModal}
-                        />
+                <>
+                    {/* Panel */}
+                    <div className="fixed inset-y-0 right-0 z-[350] flex w-full flex-col md:w-[min(52vw,860px)] animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
+                        {/* Top violet accent line */}
+                        <div className="absolute inset-x-0 top-0 z-10 h-[2px] bg-gradient-to-r from-transparent via-violet-500/70 to-transparent" />
+
+                        {/* Left edge shadow/glow */}
+                        <div className="pointer-events-none absolute inset-y-0 -left-10 w-10 bg-gradient-to-r from-transparent to-black/40" />
+
+                        {/* Glass border */}
+                        <div className="absolute inset-0 rounded-none border-l border-white/[0.08] bg-[#0d0d10] shadow-[-20px_0_60px_rgba(0,0,0,0.55)] ring-1 ring-inset ring-white/[0.04]" />
+
+                        {/* Drag handle hint */}
+                        <div className="absolute left-0 top-1/2 z-20 -translate-y-1/2 -translate-x-1/2">
+                            <div className="flex h-10 w-5 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e] shadow-lg">
+                                <div className="flex flex-col gap-1">
+                                    <span className="h-3.5 w-[2px] rounded-full bg-white/20" />
+                                    <span className="h-3.5 w-[2px] rounded-full bg-white/20" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="relative h-full overflow-hidden">
+                            <TicketDetail
+                                ticketId={selectedTicketId}
+                                onClose={handleCloseModal}
+                            />
+                        </div>
                     </div>
-                </div>
+                </>
             )}
         </div>
     );

@@ -435,7 +435,7 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
             });
             if (res.ok) {
                 const data = await res.json();
-                setComments((prev) => [...prev, data.comment]);
+                setComments((prev) => [data.comment, ...prev]);
                 setHasPersistedChanges(true);
                 commentEditor.commands.clearContent(true);
                 setCommentEmpty(true);

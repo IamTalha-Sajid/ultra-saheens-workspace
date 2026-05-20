@@ -17,12 +17,19 @@ function uploaderToJson(raw: unknown): { _id: string; name: string; email: strin
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { searchParams } = new URL(request.url);
+  const folderIdParam = searchParams.get("folderId");
+
   await connectDB();
-  const rows = await CommitteeLink.find()
+  const filter = folderIdParam
+    ? { folderId: new mongoose.Types.ObjectId(folderIdParam) }
+    : { $or: [{ folderId: null }, { folderId: { $exists: false } }] };
+
+  const rows = await CommitteeLink.find(filter)
     .populate("userId", "name email username")
     .sort({ createdAt: -1 })
     .limit(200)
@@ -31,6 +38,7 @@ export async function GET() {
   return NextResponse.json({
     links: rows.map((row) => ({
       _id: String(row._id),
+      folderId: row.folderId ? String(row.folderId) : null,
       title: row.title,
       url: row.url,
       description: row.description,
@@ -50,12 +58,16 @@ export async function POST(request: Request) {
     url?: string;
     description?: string;
     department?: string;
+    folderId?: string | null;
   };
 
   const title = String(body.title ?? "").trim();
   const url = String(body.url ?? "").trim();
   const description = String(body.description ?? "").trim();
   const department = String(body.department ?? "").trim();
+  const folderId = body.folderId && mongoose.Types.ObjectId.isValid(body.folderId)
+    ? new mongoose.Types.ObjectId(body.folderId)
+    : null;
 
   if (!title) return NextResponse.json({ error: "Title is required" }, { status: 400 });
   if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
@@ -69,6 +81,7 @@ export async function POST(request: Request) {
   await connectDB();
   const created = await CommitteeLink.create({
     userId: new mongoose.Types.ObjectId(userId),
+    folderId,
     title,
     url,
     description,
@@ -78,6 +91,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     link: {
       _id: String(created._id),
+      folderId: created.folderId ? String(created.folderId) : null,
       title: created.title,
       url: created.url,
       description: created.description,

@@ -2,6 +2,7 @@ import { Schema, models, model, type Types } from "mongoose";
 
 export interface CommitteeLinkDoc {
   userId: Types.ObjectId;
+  folderId: Types.ObjectId | null;
   title: string;
   url: string;
   description: string;
@@ -13,6 +14,7 @@ export interface CommitteeLinkDoc {
 const CommitteeLinkSchema = new Schema<CommitteeLinkDoc>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    folderId: { type: Schema.Types.ObjectId, ref: "CommitteeFolder", default: null, index: true },
     title: { type: String, required: true, trim: true, maxlength: 200 },
     url: { type: String, required: true, trim: true, maxlength: 2000 },
     description: { type: String, default: "", trim: true, maxlength: 500 },

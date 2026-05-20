@@ -96,7 +96,7 @@ export async function GET(
   }
 
   const comments = await TicketComment.find({ ticketId: oid })
-    .sort({ createdAt: 1 })
+    .sort({ createdAt: -1 })
     .populate("authorId", "name email username")
     .lean();
 
