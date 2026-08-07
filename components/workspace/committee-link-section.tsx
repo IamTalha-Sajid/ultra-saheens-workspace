@@ -116,6 +116,12 @@ export function CommitteeLinkSection() {
   const [form, setForm] = useState({ title: "", url: "", department: "", description: "" });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", url: "", department: "", description: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const editTitleInputRef = useRef<HTMLInputElement>(null);
 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const folderNameInputRef = useRef<HTMLInputElement>(null);
@@ -227,6 +233,49 @@ export function CommitteeLinkSection() {
   const deleteLink = async (id: string) => {
     setLinks((prev) => prev.filter((l) => l._id !== id));
     await fetch(`/api/committee-links/${id}`, { method: "DELETE" });
+  };
+
+  const startEditing = (link: LinkItem) => {
+    setEditingId(link._id);
+    setEditForm({ title: link.title, url: link.url, department: link.department, description: link.description });
+    setEditError(null);
+    setTimeout(() => editTitleInputRef.current?.focus(), 0);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditError(null);
+  };
+
+  const submitEdit = async () => {
+    if (!editingId) return;
+    const title = editForm.title.trim();
+    const url = editForm.url.trim();
+    if (!title) { setEditError("Title is required"); return; }
+    if (!url) { setEditError("URL is required"); return; }
+    try { new URL(url.startsWith("http") ? url : `https://${url}`); } catch {
+      setEditError("Enter a valid URL");
+      return;
+    }
+
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
+      const res = await fetch(`/api/committee-links/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editForm, url: normalizedUrl }),
+      });
+      const data = (await res.json()) as { error?: string; link?: LinkItem };
+      if (!res.ok) { setEditError(data.error ?? "Could not save link"); return; }
+      setEditingId(null);
+      void load(currentFolderId);
+    } catch {
+      setEditError("Could not save link.");
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const hasContent = folders.length > 0 || links.length > 0 || isCreatingFolder;
@@ -447,6 +496,81 @@ export function CommitteeLinkSection() {
         {/* Link rows */}
         {links.map((link) => {
           const by = link.addedBy?.name || link.addedBy?.email?.split("@")[0] || "—";
+
+          if (editingId === link._id) {
+            return (
+              <div
+                key={link._id}
+                className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-4 last:border-b-0 md:px-5"
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-white/30">Title *</label>
+                    <input
+                      ref={editTitleInputRef}
+                      type="text"
+                      value={editForm.title}
+                      onChange={(e) => setEditForm((p) => ({ ...p, title: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter") void submitEdit(); if (e.key === "Escape") cancelEditing(); }}
+                      className="glass-input py-1.5 text-sm"
+                      maxLength={200}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-white/30">URL *</label>
+                    <input
+                      type="url"
+                      value={editForm.url}
+                      onChange={(e) => setEditForm((p) => ({ ...p, url: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter") void submitEdit(); if (e.key === "Escape") cancelEditing(); }}
+                      className="glass-input py-1.5 text-sm"
+                      maxLength={2000}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-white/30">Department</label>
+                    <input
+                      type="text"
+                      value={editForm.department}
+                      onChange={(e) => setEditForm((p) => ({ ...p, department: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter") void submitEdit(); if (e.key === "Escape") cancelEditing(); }}
+                      className="glass-input py-1.5 text-sm"
+                      maxLength={100}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-white/30">Description</label>
+                    <input
+                      type="text"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter") void submitEdit(); if (e.key === "Escape") cancelEditing(); }}
+                      className="glass-input py-1.5 text-sm"
+                      maxLength={500}
+                    />
+                  </div>
+                </div>
+
+                {editError && <p className="mt-2 text-xs text-rose-300">{editError}</p>}
+
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void submitEdit()}
+                    disabled={editSaving}
+                    className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
+                  >
+                    {editSaving && <div className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />}
+                    Save Changes
+                  </button>
+                  <button type="button" onClick={cancelEditing} className="px-3 py-1.5 text-xs text-white/35 hover:text-white">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div
               key={link._id}
@@ -473,16 +597,29 @@ export function CommitteeLinkSection() {
                 <span className="hidden w-20 text-right text-xs text-white/40 sm:block">
                   {new Date(link.createdAt).toLocaleDateString()}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => void deleteLink(link._id)}
-                  title="Remove link"
-                  className="w-8 rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-rose-300 hover:bg-rose-500/10"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                  </svg>
-                </button>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => startEditing(link)}
+                    title="Edit link"
+                    className="w-8 rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-violet-300 hover:bg-violet-500/10"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void deleteLink(link._id)}
+                    title="Remove link"
+                    className="w-8 rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-rose-300 hover:bg-rose-500/10"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                      <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           );

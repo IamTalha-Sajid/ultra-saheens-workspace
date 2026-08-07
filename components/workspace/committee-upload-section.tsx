@@ -31,6 +31,14 @@ type UploadingItem = {
 
 type Crumb = { id: string | null; name: string };
 
+async function parseJsonSafe<T>(res: Response): Promise<T | null> {
+  try {
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
@@ -164,7 +172,7 @@ export function CommitteeUploadSection() {
           form.append("file", file);
           if (folderId) form.append("folderId", folderId);
           const res = await fetch("/api/committee-uploads", { method: "POST", body: form });
-          const data = (await res.json()) as { error?: string };
+          const data = await parseJsonSafe<{ error?: string }>(res);
           if (!res.ok) throw new Error(data?.error || "Upload failed");
           setUploading((prev) =>
             prev.map((it) => (it.id === itemId ? { ...it, status: "done" } : it))
@@ -242,7 +250,7 @@ export function CommitteeUploadSection() {
           form.append("file", file);
           form.append("folderId", folderId);
           const res = await fetch("/api/committee-uploads", { method: "POST", body: form });
-          const data = await res.json() as { error?: string };
+          const data = await parseJsonSafe<{ error?: string }>(res);
           if (!res.ok) throw new Error(data?.error ?? "Upload failed");
           setUploading((prev) => prev.map((it) => it.id === itemId ? { ...it, status: "done" } : it));
         } catch (err) {
@@ -256,6 +264,84 @@ export function CommitteeUploadSection() {
 
     void load(currentFolderId);
     setTimeout(() => setUploading((prev) => prev.filter((it) => it.status !== "done")), 2500);
+  }, [currentFolderId, load]);
+
+  const readAllDirEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
+    new Promise((resolve, reject) => {
+      const all: FileSystemEntry[] = [];
+      const readBatch = () => {
+        reader.readEntries((entries) => {
+          if (entries.length === 0) { resolve(all); return; }
+          all.push(...entries);
+          readBatch();
+        }, reject);
+      };
+      readBatch();
+    });
+
+  const uploadDroppedTree = useCallback(async (items: DataTransferItem[], parentId: string | null) => {
+    const filesToUpload: { file: File; folderId: string | null }[] = [];
+
+    const walk = async (entry: FileSystemEntry, targetFolderId: string | null): Promise<void> => {
+      if (entry.isFile) {
+        const file = await new Promise<File>((resolve) => {
+          (entry as FileSystemFileEntry).file(resolve);
+        });
+        filesToUpload.push({ file, folderId: targetFolderId });
+        return;
+      }
+
+      const res = await fetch("/api/committee-folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: entry.name, parentId: targetFolderId }),
+      });
+      if (!res.ok) { setError("Could not create folder."); return; }
+      const { folder } = (await res.json()) as { folder: FolderItem };
+
+      const reader = (entry as FileSystemDirectoryEntry).createReader();
+      const children = await readAllDirEntries(reader);
+      for (const child of children) await walk(child, folder._id);
+    };
+
+    const entries = items.map((item) => item.webkitGetAsEntry()).filter((e): e is FileSystemEntry => !!e);
+    await Promise.all(entries.map((entry) => walk(entry, parentId)));
+
+    void load(currentFolderId);
+
+    if (filesToUpload.length) {
+      const uploadItems: UploadingItem[] = filesToUpload.map(({ file }) => ({
+        id: Math.random().toString(36).slice(2),
+        name: file.name,
+        status: "uploading" as const,
+      }));
+      setUploading((prev) => [...prev, ...uploadItems]);
+
+      await Promise.all(
+        filesToUpload.map(async ({ file, folderId }, i) => {
+          const itemId = uploadItems[i].id;
+          try {
+            const form = new FormData();
+            form.append("title", file.name);
+            form.append("file", file);
+            if (folderId) form.append("folderId", folderId);
+            const res = await fetch("/api/committee-uploads", { method: "POST", body: form });
+            const data = await parseJsonSafe<{ error?: string }>(res);
+            if (!res.ok) throw new Error(data?.error || "Upload failed");
+            setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, status: "done" } : it)));
+          } catch (err) {
+            setUploading((prev) => prev.map((it) =>
+              it.id === itemId
+                ? { ...it, status: "error", error: err instanceof Error ? err.message : "Failed" }
+                : it
+            ));
+          }
+        })
+      );
+
+      void load(currentFolderId);
+      setTimeout(() => setUploading((prev) => prev.filter((it) => it.status !== "done")), 2500);
+    }
   }, [currentFolderId, load]);
 
   const onDragEnter = (e: React.DragEvent) => {
@@ -272,34 +358,11 @@ export function CommitteeUploadSection() {
     dragCounter.current = 0;
     setIsDragging(false);
 
-    const readEntry = (entry: FileSystemEntry): Promise<File[]> => {
-      if (entry.isFile) {
-        return new Promise((resolve) => {
-          (entry as FileSystemFileEntry).file((f) => resolve([f]));
-        });
-      }
-      return new Promise((resolve) => {
-        const reader = (entry as FileSystemDirectoryEntry).createReader();
-        reader.readEntries(async (entries) => {
-          const nested = await Promise.all(entries.map(readEntry));
-          resolve(nested.flat());
-        });
-      });
-    };
-
     const items = Array.from(e.dataTransfer.items);
     const hasFolder = items.some((item) => item.webkitGetAsEntry()?.isDirectory);
 
     if (hasFolder) {
-      Promise.all(
-        items.map((item) => {
-          const entry = item.webkitGetAsEntry();
-          return entry ? readEntry(entry) : Promise.resolve<File[]>([]);
-        })
-      ).then((results) => {
-        const allFiles = results.flat();
-        if (allFiles.length) void uploadFiles(allFiles, currentFolderId);
-      });
+      void uploadDroppedTree(items, currentFolderId);
     } else {
       const dropped = Array.from(e.dataTransfer.files);
       if (dropped.length) void uploadFiles(dropped, currentFolderId);

@@ -325,9 +325,21 @@ export function NotificationPanel() {
                               e.stopPropagation();
                               void toggleRead(n.id, n.read);
                             }}
-                            className="text-xs font-medium text-[var(--xanadu)] hover:text-white hover:underline transition-colors focus:outline-none"
+                            title={n.read ? "Mark as unread" : "Mark as read"}
+                            aria-label={n.read ? "Mark as unread" : "Mark as read"}
+                            className="rounded-md p-1 text-[var(--xanadu)] hover:text-white transition-colors focus:outline-none"
                           >
-                            {n.read ? "Mark as unread" : "Mark as read"}
+                            {n.read ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <rect width="20" height="16" x="2" y="4" rx="2" />
+                                <path d="m2 6 10 7L22 6" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <path d="M2 8.5 12 13l10-4.5" />
+                                <path d="M2 8.5V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.5L14 3.6a3.5 3.5 0 0 0-4 0Z" />
+                              </svg>
+                            )}
                           </button>
                         </div>
                       </div>

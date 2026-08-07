@@ -81,73 +81,105 @@ export async function GET(request: Request) {
   });
 }
 
+function guessMimeFromExt(name: string): string | null {
+  const ext = path.extname(name).toLowerCase();
+  const byExt: Record<string, string> = {
+    ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".txt": "text/plain",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+  };
+  return byExt[ext] ?? null;
+}
+
 export async function POST(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const userId = await getSessionUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const form = await request.formData();
-  const title = String(form.get("title") ?? "").trim();
-  const details = String(form.get("details") ?? "").trim();
-  const folderIdField = form.get("folderId");
-  const folderId = folderIdField && mongoose.Types.ObjectId.isValid(String(folderIdField))
-    ? new mongoose.Types.ObjectId(String(folderIdField))
-    : null;
-  const file = form.get("file");
+    const form = await request.formData();
+    const title = String(form.get("title") ?? "").trim();
+    const details = String(form.get("details") ?? "").trim();
+    const folderIdField = form.get("folderId");
+    const folderId = folderIdField && mongoose.Types.ObjectId.isValid(String(folderIdField))
+      ? new mongoose.Types.ObjectId(String(folderIdField))
+      : null;
+    const file = form.get("file");
 
-  if (!title) {
-    return NextResponse.json({ error: "Title is required" }, { status: 400 });
-  }
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Please attach a file" }, { status: 400 });
-  }
-  if (!ALLOWED_MIME_TYPES.has(file.type)) {
-    return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
-  }
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: "File too large (max 15MB)" }, { status: 400 });
-  }
+    if (!title) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    }
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "Please attach a file" }, { status: 400 });
+    }
 
-  const ext = path.extname(file.name) || "";
-  const safeBase = sanitizeFileName(path.basename(file.name, ext)) || "document";
-  const storedName = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}-${safeBase}${ext}`;
-  const diskDir = path.join(process.cwd(), "public", "uploads", "committee");
-  const diskPath = path.join(diskDir, storedName);
-  const publicUrl = `/uploads/committee/${storedName}`;
+    // Some browsers/OS combos report an empty or generic MIME type for
+    // less common extensions like .pptx — fall back to the file extension
+    // instead of rejecting a valid file outright.
+    const mimeType = ALLOWED_MIME_TYPES.has(file.type)
+      ? file.type
+      : guessMimeFromExt(file.name);
 
-  await mkdir(diskDir, { recursive: true });
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  await writeFile(diskPath, bytes);
+    if (!mimeType) {
+      return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File too large (max 15MB)" }, { status: 400 });
+    }
 
-  await connectDB();
-  const created = await CommitteeUpload.create({
-    userId: new mongoose.Types.ObjectId(userId),
-    folderId,
-    title,
-    details,
-    originalName: file.name,
-    storedName,
-    mimeType: file.type,
-    size: file.size,
-    url: publicUrl,
-  });
+    const ext = path.extname(file.name) || "";
+    const safeBase = sanitizeFileName(path.basename(file.name, ext)) || "document";
+    const storedName = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}-${safeBase}${ext}`;
+    const diskDir = path.join(process.cwd(), "public", "uploads", "committee");
+    const diskPath = path.join(diskDir, storedName);
+    const publicUrl = `/uploads/committee/${storedName}`;
 
-  return NextResponse.json({
-    upload: {
-      _id: String(created._id),
-      title: created.title,
-      details: created.details,
-      originalName: created.originalName,
-      mimeType: created.mimeType,
-      size: created.size,
-      url: created.url,
-      createdAt: created.createdAt.toISOString(),
-      uploadedBy: {
-        _id: userId,
-        name: "",
-        email: "",
+    await mkdir(diskDir, { recursive: true });
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    await writeFile(diskPath, bytes);
+
+    await connectDB();
+    const created = await CommitteeUpload.create({
+      userId: new mongoose.Types.ObjectId(userId),
+      folderId,
+      title,
+      details,
+      originalName: file.name,
+      storedName,
+      mimeType,
+      size: file.size,
+      url: publicUrl,
+    });
+
+    return NextResponse.json({
+      upload: {
+        _id: String(created._id),
+        title: created.title,
+        details: created.details,
+        originalName: created.originalName,
+        mimeType: created.mimeType,
+        size: created.size,
+        url: created.url,
+        createdAt: created.createdAt.toISOString(),
+        uploadedBy: {
+          _id: userId,
+          name: "",
+          email: "",
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.error("committee-uploads POST failed:", err);
+    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 });
+  }
 }

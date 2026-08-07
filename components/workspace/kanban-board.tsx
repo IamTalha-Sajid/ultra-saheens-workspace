@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { TicketDetail } from "./ticket-detail";
+import { TitleMentionInput } from "./title-mention-input";
 import { useSearchParams } from "next/navigation";
 
 type User = {
@@ -121,6 +122,28 @@ function getTicketAssignees(ticket: Ticket): User[] {
     return ticket.assigneeId ? [ticket.assigneeId] : [];
 }
 
+function getDeadlineStatus(estimate?: string): "overdue" | "soon" | "ok" | null {
+    if (!estimate) return null;
+    const due = new Date(estimate.split("T")[0] + "T23:59:59");
+    const now = new Date();
+    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return "overdue";
+    if (diffDays <= 3) return "soon";
+    return "ok";
+}
+
+const DEADLINE_BADGE_COLORS: Record<"overdue" | "soon" | "ok", string> = {
+    overdue: "border-rose-500/20 bg-rose-500/10 text-rose-400 hover:border-rose-400/50 hover:bg-rose-500/20",
+    soon: "border-amber-500/20 bg-amber-500/10 text-amber-400 hover:border-amber-400/50 hover:bg-amber-500/20",
+    ok: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:border-emerald-400/50 hover:bg-emerald-500/20",
+};
+
+const DEADLINE_TEXT_COLORS: Record<"overdue" | "soon" | "ok", string> = {
+    overdue: "text-rose-400 hover:text-rose-300",
+    soon: "text-amber-400 hover:text-amber-300",
+    ok: "text-emerald-400 hover:text-emerald-300",
+};
+
 const BOARD_FILTER_KEY = "kanban_board_filters";
 function readBoardFilters(): Record<string, unknown> {
     if (typeof window === "undefined") return {};
@@ -135,6 +158,7 @@ export function KanbanBoard() {
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState<Ticket["status"] | null>(null);
     const [newTitle, setNewTitle] = useState("");
+    const [pendingMentionIds, setPendingMentionIds] = useState<string[]>([]);
     const [filterAssigneeIds, setFilterAssigneeIds] = useState<string[]>(() => (readBoardFilters().filterAssigneeIds as string[]) ?? []);
     const [filterStatuses, setFilterStatuses] = useState<Ticket["status"][]>(() => (readBoardFilters().filterStatuses as Ticket["status"][]) ?? []);
     const [filterDueDate, setFilterDueDate] = useState<string>(() => (readBoardFilters().filterDueDate as string) ?? "");
@@ -286,13 +310,16 @@ export function KanbanBoard() {
 
     const handleCreate = async (status: Ticket["status"]) => {
         if (!newTitle.trim()) { setIsAdding(null); return; }
+        const assigneeIds = pendingMentionIds.length
+            ? Array.from(new Set([...filterAssigneeIds, ...pendingMentionIds]))
+            : filterAssigneeIds; // Auto-assign to filtered/mentioned users if present
         const res = await fetch("/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                title: newTitle, 
+            body: JSON.stringify({
+                title: newTitle,
                 status,
-                assigneeIds: filterAssigneeIds // Auto-assign to filtered users if present
+                assigneeIds,
             }),
         });
         if (res.ok) {
@@ -300,6 +327,7 @@ export function KanbanBoard() {
             setTickets((prev) => [ticket, ...prev]);
         }
         setNewTitle("");
+        setPendingMentionIds([]);
         setIsAdding(null);
     };
 
@@ -422,7 +450,7 @@ export function KanbanBoard() {
     };
 
     return (
-        <div className="relative flex h-full flex-col gap-4 overflow-hidden" onClick={() => { if (isDetailOpen) handleCloseModal(); }}>
+        <div className="relative flex h-full flex-col gap-4 overflow-hidden" onClick={() => { if (isDetailOpen) handleCloseModal(true); }}>
             {/* ── Professional filter bar ── */}
             <div className="flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-[var(--surface-mid)] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 no-scrollbar">
                 <div className="relative flex items-center gap-2">
@@ -745,7 +773,7 @@ export function KanbanBoard() {
                                                             className="flex items-center"
                                                         >
                                                             {t.estimate ? (
-                                                                <span className="flex items-center gap-1 rounded-md border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 shadow-sm hover:border-rose-400/50 hover:bg-rose-500/20 transition-colors">
+                                                                <span className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold shadow-sm transition-colors ${DEADLINE_BADGE_COLORS[getDeadlineStatus(t.estimate) ?? "ok"]}`}>
                                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                                     {new Date(t.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                                                                 </span>
@@ -781,18 +809,17 @@ export function KanbanBoard() {
 
                                     {isAdding === col ? (
                                         <div className={`rounded-xl border p-3 ${theme.border} bg-white/[0.02]`}>
-                                            <input
-                                                type="text"
+                                            <TitleMentionInput
                                                 autoFocus
                                                 value={newTitle}
-                                                onChange={(e) => setNewTitle(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") void handleCreate(col);
-                                                    if (e.key === "Escape") setIsAdding(null);
-                                                }}
-                                                onBlur={() => { if (!newTitle) setIsAdding(null); }}
-                                                placeholder="Task title..."
+                                                onChange={setNewTitle}
+                                                onEnter={() => void handleCreate(col)}
+                                                onEscape={() => { setIsAdding(null); setPendingMentionIds([]); }}
+                                                onBlur={() => { if (!newTitle) { setIsAdding(null); setPendingMentionIds([]); } }}
+                                                placeholder="Task title... (@ to mention)"
                                                 className="w-full bg-transparent text-sm text-white placeholder-white/30 outline-none"
+                                                users={users}
+                                                onMention={(u) => setPendingMentionIds((prev) => Array.from(new Set([...prev, u._id])))}
                                             />
                                             <div className="mt-2 flex gap-2">
                                                 <button
@@ -802,7 +829,7 @@ export function KanbanBoard() {
                                                     Add
                                                 </button>
                                                 <button
-                                                    onClick={() => setIsAdding(null)}
+                                                    onClick={() => { setIsAdding(null); setPendingMentionIds([]); }}
                                                     className="px-2 py-1 text-xs text-white/40 hover:text-white"
                                                 >
                                                     Cancel
@@ -936,7 +963,7 @@ export function KanbanBoard() {
                                             onClick={(e) => { e.stopPropagation(); openDeadlinePicker(t._id, e.currentTarget); }}
                                         >
                                             {t.estimate ? (
-                                                <span className="group/dl flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors cursor-pointer">
+                                                <span className={`group/dl flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${DEADLINE_TEXT_COLORS[getDeadlineStatus(t.estimate) ?? "ok"]}`}>
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                     {new Date(t.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 opacity-0 group-hover/dl:opacity-60" aria-hidden><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -981,17 +1008,16 @@ export function KanbanBoard() {
                                 <td colSpan={8} className="p-0">
                                     {isAdding === "Todo" ? (
                                         <div className="flex items-center gap-3 px-5 py-3 bg-white/[0.02] border-y border-white/[0.04]">
-                                            <input
-                                                type="text"
+                                            <TitleMentionInput
                                                 autoFocus
                                                 value={newTitle}
-                                                onChange={(e) => setNewTitle(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") void handleCreate("Todo");
-                                                    if (e.key === "Escape") setIsAdding(null);
-                                                }}
-                                                placeholder="Task title..."
+                                                onChange={setNewTitle}
+                                                onEnter={() => void handleCreate("Todo")}
+                                                onEscape={() => { setIsAdding(null); setPendingMentionIds([]); }}
+                                                placeholder="Task title... (@ to mention)"
                                                 className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
+                                                users={users}
+                                                onMention={(u) => setPendingMentionIds((prev) => Array.from(new Set([...prev, u._id])))}
                                             />
                                             <div className="flex gap-2">
                                                 <button
@@ -1001,7 +1027,7 @@ export function KanbanBoard() {
                                                     Add
                                                 </button>
                                                 <button
-                                                    onClick={() => setIsAdding(null)}
+                                                    onClick={() => { setIsAdding(null); setPendingMentionIds([]); }}
                                                     className="px-2 py-1.5 text-xs text-white/40 hover:text-white"
                                                 >
                                                     Cancel
