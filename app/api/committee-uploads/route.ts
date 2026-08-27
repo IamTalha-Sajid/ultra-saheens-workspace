@@ -7,7 +7,7 @@ import { getSessionUserId } from "@/lib/auth-api";
 import { connectDB } from "@/lib/mongodb";
 import CommitteeUpload from "@/models/CommitteeUpload";
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB — presentations with embedded media routinely exceed 15MB
 const ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
   "application/msword",
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
     }
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File too large (max 15MB)" }, { status: 400 });
+      return NextResponse.json({ error: "File too large (max 50MB)" }, { status: 400 });
     }
 
     const ext = path.extname(file.name) || "";

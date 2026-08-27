@@ -10,11 +10,14 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const parentId = searchParams.get("parentId");
+  const type = searchParams.get("type");
+  if (type !== "file" && type !== "link")
+    return NextResponse.json({ error: "type must be 'file' or 'link'" }, { status: 400 });
 
   await connectDB();
   const filter = parentId
-    ? { parentId: new mongoose.Types.ObjectId(parentId) }
-    : { parentId: null };
+    ? { type, parentId: new mongoose.Types.ObjectId(parentId) }
+    : { type, parentId: null };
 
   const folders = await CommitteeFolder.find(filter).sort({ name: 1 }).lean();
 
@@ -32,13 +35,16 @@ export async function POST(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = (await request.json()) as { name?: string; parentId?: string | null };
+  const body = (await request.json()) as { name?: string; parentId?: string | null; type?: string };
   const name = String(body.name ?? "").trim();
   if (!name) return NextResponse.json({ error: "Folder name is required" }, { status: 400 });
+  if (body.type !== "file" && body.type !== "link")
+    return NextResponse.json({ error: "type must be 'file' or 'link'" }, { status: 400 });
 
   await connectDB();
   const folder = await CommitteeFolder.create({
     name,
+    type: body.type,
     parentId: body.parentId ? new mongoose.Types.ObjectId(body.parentId) : null,
     createdBy: new mongoose.Types.ObjectId(userId),
   });

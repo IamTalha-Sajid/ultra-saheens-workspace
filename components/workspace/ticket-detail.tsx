@@ -50,15 +50,6 @@ function ArrowLeftIcon({ className }: { className?: string }) {
     );
 }
 
-function SaveIcon({ className }: { className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-            <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
-            <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /><path d="M7 3v4a1 1 0 0 0 1 1h7" />
-        </svg>
-    );
-}
-
 function ChatIcon({ className }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
@@ -183,7 +174,12 @@ const COLUMNS = ["Todo", "In progress", "Done", "Blocked"];
 
 /* ── Component ── */
 
-export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?: (hasChanges?: boolean) => void }) {
+export function TicketDetail({ ticketId, onClose, flushRef }: {
+    ticketId: string;
+    onClose?: (hasChanges?: boolean) => void;
+    /** Parent can call `flushRef.current()` before force-closing (e.g. backdrop click) to flush any pending autosave. */
+    flushRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+}) {
     const router = useRouter();
     const { data: session } = useSession();
     const { confirm } = useFeedback();
@@ -419,6 +415,36 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
         }
     }, [ticket, ticketId]);
 
+    useEffect(() => {
+        if (!hasUnsavedTicketChanges || saveState === "saving") return;
+        const timer = setTimeout(() => { void handleSaveAll(); }, 900);
+        return () => clearTimeout(timer);
+    }, [ticket, hasUnsavedTicketChanges, saveState, handleSaveAll]);
+
+    const flushPendingSave = useCallback(async () => {
+        if (hasUnsavedTicketChanges) {
+            await handleSaveAll();
+        }
+    }, [hasUnsavedTicketChanges, handleSaveAll]);
+
+    useEffect(() => {
+        if (!flushRef) return;
+        flushRef.current = flushPendingSave;
+        return () => {
+            if (flushRef.current === flushPendingSave) flushRef.current = null;
+        };
+    }, [flushRef, flushPendingSave]);
+
+    const requestClose = useCallback(async () => {
+        if (!onClose) return;
+        if (hasUnsavedTicketChanges) {
+            await handleSaveAll();
+            onClose(true);
+        } else {
+            onClose(hasPersistedChanges);
+        }
+    }, [onClose, hasUnsavedTicketChanges, hasPersistedChanges, handleSaveAll]);
+
     const handlePostComment = async () => {
         if (!commentEditor || postingComment) return;
         const html = commentEditor.getHTML();
@@ -516,7 +542,7 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                     The ticket you are looking for does not exist or has been deleted.
                 </p>
                 {onClose ? (
-                    <button onClick={() => onClose(hasPersistedChanges)} className="glass-button-primary w-auto px-6">
+                    <button onClick={() => void requestClose()} className="glass-button-primary w-auto px-6">
                         Close
                     </button>
                 ) : (
@@ -544,7 +570,7 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     {onClose ? (
                         <button
-                            onClick={() => onClose(hasPersistedChanges)}
+                            onClick={() => void requestClose()}
                             className="group flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:text-white"
                         >
                             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 transition-colors group-hover:bg-white/10">
@@ -578,37 +604,29 @@ export function TicketDetail({ ticketId, onClose }: { ticketId: string; onClose?
                             </span>
                         )}
 
-                        {/* Save Button */}
-                        <button
-                            type="button"
-                            onClick={() => void handleSaveAll()}
-                            disabled={saveState === "saving" || !hasUnsavedTicketChanges}
-                            className="ml-2 flex items-center gap-2 rounded-xl border border-violet-500/40 bg-gradient-to-b from-violet-600 to-violet-800 px-5 py-2 text-sm font-semibold text-white shadow-[0_4px_20px_rgba(139,92,246,0.25)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {saveState === "saving" ? (
-                                <>
-                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                                    Saving…
-                                </>
-                            ) : saveState === "saved" ? (
-                                <>
-                                    <CheckCircleIcon className="h-4 w-4 text-emerald-400" />
-                                    Saved
-                                </>
-                            ) : (
-                                <>
-                                    <SaveIcon className="h-4 w-4" />
-                                    Save
-                                </>
-                            )}
-                        </button>
+                        {/* Autosave status */}
+                        {(saveState === "saving" || saveState === "saved") && (
+                            <span className="ml-2 flex items-center gap-1.5 text-xs font-medium text-white/40">
+                                {saveState === "saving" ? (
+                                    <>
+                                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white/70" />
+                                        Saving…
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-400" />
+                                        Saved
+                                    </>
+                                )}
+                            </span>
+                        )}
                     </div>
                 </div>
 
                 {/* Title */}
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-black tracking-widest text-violet-400/80">US-{ticket.sid}</span>
+                        <span className="text-sm font-black tracking-widest text-violet-400">US-{ticket.sid}</span>
                     </div>
                     {titleEditor ? (
                         <EditorContent editor={titleEditor} />

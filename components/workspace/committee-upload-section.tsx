@@ -26,6 +26,7 @@ type UploadingItem = {
   id: string;
   name: string;
   status: "uploading" | "done" | "error";
+  progress: number;
   error?: string;
 };
 
@@ -37,6 +38,27 @@ async function parseJsonSafe<T>(res: Response): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+function uploadWithProgress(
+  url: string,
+  form: FormData,
+  onProgress: (pct: number) => void
+): Promise<{ ok: boolean; data: { error?: string } | null }> {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let data: { error?: string } | null = null;
+      try { data = JSON.parse(xhr.responseText); } catch { /* ignore */ }
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, data });
+    };
+    xhr.onerror = () => resolve({ ok: false, data: null });
+    xhr.send(form);
+  });
 }
 
 function formatBytes(n: number): string {
@@ -86,12 +108,15 @@ export function CommitteeUploadSection() {
   const [isDragging, setIsDragging] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [renameFolderName, setRenameFolderName] = useState("");
   const [uploading, setUploading] = useState<UploadingItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const folderNameInputRef = useRef<HTMLInputElement>(null);
+  const renameFolderInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
   useEffect(() => {
@@ -102,7 +127,7 @@ export function CommitteeUploadSection() {
     setLoading(true);
     setError(null);
     try {
-      const folderQ = id ? `?parentId=${id}` : "";
+      const folderQ = id ? `?type=file&parentId=${id}` : "?type=file";
       const fileQ = id ? `?folderId=${id}` : "";
       const [fRes, uRes] = await Promise.all([
         fetch(`/api/committee-folders${folderQ}`),
@@ -149,7 +174,7 @@ export function CommitteeUploadSection() {
     const res = await fetch("/api/committee-folders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, parentId: currentFolderId }),
+      body: JSON.stringify({ name, type: "file", parentId: currentFolderId }),
     });
     if (res.ok) void load(currentFolderId);
     else setError("Could not create folder.");
@@ -160,6 +185,7 @@ export function CommitteeUploadSection() {
       id: Math.random().toString(36).slice(2),
       name: f.name,
       status: "uploading" as const,
+      progress: 0,
     }));
     setUploading((prev) => [...prev, ...items]);
 
@@ -171,11 +197,12 @@ export function CommitteeUploadSection() {
           form.append("title", file.name);
           form.append("file", file);
           if (folderId) form.append("folderId", folderId);
-          const res = await fetch("/api/committee-uploads", { method: "POST", body: form });
-          const data = await parseJsonSafe<{ error?: string }>(res);
-          if (!res.ok) throw new Error(data?.error || "Upload failed");
+          const { ok, data } = await uploadWithProgress("/api/committee-uploads", form, (pct) => {
+            setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, progress: pct } : it)));
+          });
+          if (!ok) throw new Error(data?.error || "Upload failed");
           setUploading((prev) =>
-            prev.map((it) => (it.id === itemId ? { ...it, status: "done" } : it))
+            prev.map((it) => (it.id === itemId ? { ...it, status: "done", progress: 100 } : it))
           );
         } catch (err) {
           setUploading((prev) =>
@@ -204,10 +231,11 @@ export function CommitteeUploadSection() {
     const rootRes = await fetch("/api/committee-folders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: rootName, parentId: currentFolderId }),
+      body: JSON.stringify({ name: rootName, type: "file", parentId: currentFolderId }),
     });
-    if (!rootRes.ok) { setError("Could not create folder."); return; }
-    const { folder: rootFolder } = await rootRes.json() as { folder: FolderItem };
+    const rootData = await parseJsonSafe<{ folder: FolderItem }>(rootRes);
+    if (!rootRes.ok || !rootData) { setError("Could not create folder."); return; }
+    const rootFolder = rootData.folder;
 
     const folderIdByPath = new Map<string, string>();
     folderIdByPath.set(rootName, rootFolder._id);
@@ -222,9 +250,10 @@ export function CommitteeUploadSection() {
         const res = await fetch("/api/committee-folders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: parts[parts.length - 1], parentId }),
+          body: JSON.stringify({ name: parts[parts.length - 1], type: "file", parentId }),
         });
-        const data = await res.json() as { folder: FolderItem };
+        const data = await parseJsonSafe<{ folder: FolderItem }>(res);
+        if (!res.ok || !data) throw new Error("Could not create folder.");
         folderIdByPath.set(key, data.folder._id);
         return data.folder._id;
       })();
@@ -236,6 +265,7 @@ export function CommitteeUploadSection() {
       id: Math.random().toString(36).slice(2),
       name: f.webkitRelativePath || f.name,
       status: "uploading" as const,
+      progress: 0,
     }));
     setUploading((prev) => [...prev, ...items]);
 
@@ -249,10 +279,11 @@ export function CommitteeUploadSection() {
           form.append("title", file.name);
           form.append("file", file);
           form.append("folderId", folderId);
-          const res = await fetch("/api/committee-uploads", { method: "POST", body: form });
-          const data = await parseJsonSafe<{ error?: string }>(res);
-          if (!res.ok) throw new Error(data?.error ?? "Upload failed");
-          setUploading((prev) => prev.map((it) => it.id === itemId ? { ...it, status: "done" } : it));
+          const { ok, data } = await uploadWithProgress("/api/committee-uploads", form, (pct) => {
+            setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, progress: pct } : it)));
+          });
+          if (!ok) throw new Error(data?.error ?? "Upload failed");
+          setUploading((prev) => prev.map((it) => it.id === itemId ? { ...it, status: "done", progress: 100 } : it));
         } catch (err) {
           setUploading((prev) => prev.map((it) => it.id === itemId
             ? { ...it, status: "error", error: err instanceof Error ? err.message : "Failed" }
@@ -264,6 +295,85 @@ export function CommitteeUploadSection() {
 
     void load(currentFolderId);
     setTimeout(() => setUploading((prev) => prev.filter((it) => it.status !== "done")), 2500);
+  }, [currentFolderId, load]);
+
+  const uploadFolderViaPicker = useCallback(async () => {
+    const pickDirectory = (window as unknown as {
+      showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
+    }).showDirectoryPicker;
+    if (!pickDirectory) {
+      folderInputRef.current?.click();
+      return;
+    }
+
+    let rootHandle: FileSystemDirectoryHandle;
+    try {
+      rootHandle = await pickDirectory();
+    } catch {
+      return; // user cancelled
+    }
+
+    const filesToUpload: { file: File; folderId: string | null }[] = [];
+
+    const walkHandle = async (dirHandle: FileSystemDirectoryHandle, parentId: string | null): Promise<void> => {
+      const res = await fetch("/api/committee-folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: dirHandle.name, type: "file", parentId }),
+      });
+      const data = await parseJsonSafe<{ folder: FolderItem }>(res);
+      if (!res.ok || !data) { setError("Could not create folder."); return; }
+      const { folder } = data;
+
+      for await (const handle of (dirHandle as unknown as {
+        values: () => AsyncIterable<FileSystemDirectoryHandle | (FileSystemHandle & { getFile: () => Promise<File> })>;
+      }).values()) {
+        if (handle.kind === "directory") {
+          await walkHandle(handle as FileSystemDirectoryHandle, folder._id);
+        } else {
+          const file = await (handle as unknown as { getFile: () => Promise<File> }).getFile();
+          filesToUpload.push({ file, folderId: folder._id });
+        }
+      }
+    };
+
+    await walkHandle(rootHandle, currentFolderId);
+    void load(currentFolderId);
+
+    if (filesToUpload.length) {
+      const uploadItems: UploadingItem[] = filesToUpload.map(({ file }) => ({
+        id: Math.random().toString(36).slice(2),
+        name: file.name,
+        status: "uploading" as const,
+        progress: 0,
+      }));
+      setUploading((prev) => [...prev, ...uploadItems]);
+
+      await Promise.all(
+        filesToUpload.map(async ({ file, folderId }, i) => {
+          const itemId = uploadItems[i].id;
+          try {
+            const form = new FormData();
+            form.append("title", file.name);
+            form.append("file", file);
+            if (folderId) form.append("folderId", folderId);
+            const { ok, data } = await uploadWithProgress("/api/committee-uploads", form, (pct) => {
+              setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, progress: pct } : it)));
+            });
+            if (!ok) throw new Error(data?.error || "Upload failed");
+            setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, status: "done", progress: 100 } : it)));
+          } catch (err) {
+            setUploading((prev) => prev.map((it) => it.id === itemId
+              ? { ...it, status: "error", error: err instanceof Error ? err.message : "Failed" }
+              : it
+            ));
+          }
+        })
+      );
+
+      void load(currentFolderId);
+      setTimeout(() => setUploading((prev) => prev.filter((it) => it.status !== "done")), 2500);
+    }
   }, [currentFolderId, load]);
 
   const readAllDirEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
@@ -294,10 +404,11 @@ export function CommitteeUploadSection() {
       const res = await fetch("/api/committee-folders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: entry.name, parentId: targetFolderId }),
+        body: JSON.stringify({ name: entry.name, type: "file", parentId: targetFolderId }),
       });
-      if (!res.ok) { setError("Could not create folder."); return; }
-      const { folder } = (await res.json()) as { folder: FolderItem };
+      const data = await parseJsonSafe<{ folder: FolderItem }>(res);
+      if (!res.ok || !data) { setError("Could not create folder."); return; }
+      const { folder } = data;
 
       const reader = (entry as FileSystemDirectoryEntry).createReader();
       const children = await readAllDirEntries(reader);
@@ -314,6 +425,7 @@ export function CommitteeUploadSection() {
         id: Math.random().toString(36).slice(2),
         name: file.name,
         status: "uploading" as const,
+        progress: 0,
       }));
       setUploading((prev) => [...prev, ...uploadItems]);
 
@@ -325,10 +437,11 @@ export function CommitteeUploadSection() {
             form.append("title", file.name);
             form.append("file", file);
             if (folderId) form.append("folderId", folderId);
-            const res = await fetch("/api/committee-uploads", { method: "POST", body: form });
-            const data = await parseJsonSafe<{ error?: string }>(res);
-            if (!res.ok) throw new Error(data?.error || "Upload failed");
-            setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, status: "done" } : it)));
+            const { ok, data } = await uploadWithProgress("/api/committee-uploads", form, (pct) => {
+              setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, progress: pct } : it)));
+            });
+            if (!ok) throw new Error(data?.error || "Upload failed");
+            setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, status: "done", progress: 100 } : it)));
           } catch (err) {
             setUploading((prev) => prev.map((it) =>
               it.id === itemId
@@ -377,6 +490,30 @@ export function CommitteeUploadSection() {
   const deleteFolder = async (id: string) => {
     setFolders((prev) => prev.filter((f) => f._id !== id));
     await fetch(`/api/committee-folders/${id}`, { method: "DELETE" });
+  };
+
+  const startRenameFolder = (folder: FolderItem) => {
+    setRenamingFolderId(folder._id);
+    setRenameFolderName(folder.name);
+    setTimeout(() => renameFolderInputRef.current?.focus(), 0);
+  };
+
+  const confirmRenameFolder = async () => {
+    const id = renamingFolderId;
+    const name = renameFolderName.trim();
+    setRenamingFolderId(null);
+    if (!id || !name) return;
+    const prevFolders = folders;
+    setFolders((prev) => prev.map((f) => (f._id === id ? { ...f, name } : f)));
+    const res = await fetch(`/api/committee-folders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      setFolders(prevFolders);
+      setError("Could not rename folder.");
+    }
   };
 
   const hasContent = folders.length > 0 || files.length > 0 || isCreatingFolder;
@@ -439,7 +576,7 @@ export function CommitteeUploadSection() {
 
           <button
             type="button"
-            onClick={() => folderInputRef.current?.click()}
+            onClick={() => void uploadFolderViaPicker()}
             className="flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-all hover:bg-amber-500/20 hover:text-white"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
@@ -495,9 +632,10 @@ export function CommitteeUploadSection() {
             <span className="w-7" />
             <span className="pl-2.5">Name</span>
             <span className="flex items-center gap-8 pr-1">
-              <span className="hidden w-28 sm:block">Uploaded by</span>
+              <span className="hidden w-28 sm:block">Created by</span>
               <span className="hidden w-20 text-right sm:block">Date</span>
-              <span className="w-24 text-right">Size</span>
+              <span className="w-14 text-right">Size</span>
+              <span className="w-16 text-right">Actions</span>
             </span>
           </div>
         )}
@@ -541,19 +679,46 @@ export function CommitteeUploadSection() {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 text-amber-400/75">
               <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15zM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 12h-15a4.483 4.483 0 0 0-3 1.146V10.146z"/>
             </svg>
-            <button
-              type="button"
-              onClick={() => navigateTo(folder)}
-              className="min-w-0 pl-2.5 text-left"
-            >
-              <span className="block truncate text-sm font-medium text-white/85 hover:text-white">{folder.name}</span>
-            </button>
-            <div className="flex items-center gap-8 pr-1">
+            {renamingFolderId === folder._id ? (
+              <input
+                ref={renameFolderInputRef}
+                type="text"
+                value={renameFolderName}
+                onChange={(e) => setRenameFolderName(e.target.value)}
+                onBlur={() => void confirmRenameFolder()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void confirmRenameFolder();
+                  if (e.key === "Escape") setRenamingFolderId(null);
+                }}
+                maxLength={180}
+                className="glass-input min-w-0 py-1 pl-2.5 text-sm"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigateTo(folder)}
+                onDoubleClick={(e) => { e.stopPropagation(); startRenameFolder(folder); }}
+                className="min-w-0 pl-2.5 text-left"
+              >
+                <span className="block truncate text-sm font-medium text-white/85 hover:text-white">{folder.name}</span>
+              </button>
+            )}
+            <div className="flex cursor-default items-center gap-8 pr-1">
               <span className="hidden w-28 text-xs text-white/30 sm:block">—</span>
               <span className="hidden w-20 text-right text-xs text-white/30 sm:block">
                 {new Date(folder.createdAt).toLocaleDateString()}
               </span>
-              <div className="flex w-24 items-center justify-end gap-1">
+              <span className="w-14 text-right text-xs text-white/30">—</span>
+              <div className="flex w-16 items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => startRenameFolder(folder)}
+                  title="Rename folder"
+                  className="rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-violet-300 hover:bg-violet-500/10"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                </button>
                 <button
                   type="button"
                   onClick={() => void deleteFolder(folder._id)}
@@ -587,13 +752,13 @@ export function CommitteeUploadSection() {
                   <p className="truncate text-[11px] text-white/35">{file.details}</p>
                 )}
               </a>
-              <div className="flex items-center gap-8 pr-1">
+              <div className="flex cursor-default items-center gap-8 pr-1">
                 <span className="hidden w-28 truncate text-xs text-white/40 sm:block">{by}</span>
                 <span className="hidden w-20 text-right text-xs text-white/40 sm:block">
                   {new Date(file.createdAt).toLocaleDateString()}
                 </span>
-                <div className="flex w-24 items-center justify-end gap-2">
-                  <span className="text-xs text-white/30">{formatBytes(file.size)}</span>
+                <span className="w-14 text-right text-xs text-white/30">{formatBytes(file.size)}</span>
+                <div className="flex w-10 items-center justify-end">
                   <button
                     type="button"
                     onClick={() => void deleteFile(file._id)}
@@ -641,37 +806,50 @@ export function CommitteeUploadSection() {
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/30">Uploading</p>
           <div className="space-y-2">
             {uploading.map((item) => (
-              <div key={item.id} className="flex items-center gap-2.5 text-xs">
-                {item.status === "uploading" && (
-                  <div className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-violet-400/30 border-t-violet-300" />
-                )}
-                {item.status === "done" && (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-emerald-400">
-                    <path d="M20 6 9 17l-5-5"/>
-                  </svg>
-                )}
-                {item.status === "error" && (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-rose-400">
-                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-                  </svg>
-                )}
-                <span className={`min-w-0 flex-1 truncate ${
-                  item.status === "error" ? "text-rose-300" :
-                  item.status === "done" ? "text-emerald-300/70" : "text-white/55"
-                }`}>
-                  {item.name}
-                  {item.status === "error" && item.error && (
-                    <span className="text-rose-400/70"> — {item.error}</span>
+              <div key={item.id} className="flex flex-col gap-1 text-xs">
+                <div className="flex items-center gap-2.5">
+                  {item.status === "uploading" && (
+                    <div className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-violet-400/30 border-t-violet-300" />
                   )}
-                </span>
-                {item.status !== "uploading" && (
-                  <button
-                    type="button"
-                    onClick={() => setUploading((prev) => prev.filter((i) => i.id !== item.id))}
-                    className="shrink-0 text-white/20 hover:text-white/60"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                  </button>
+                  {item.status === "done" && (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-emerald-400">
+                      <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                  )}
+                  {item.status === "error" && (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-rose-400">
+                      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                    </svg>
+                  )}
+                  <span className={`min-w-0 flex-1 truncate ${
+                    item.status === "error" ? "text-rose-300" :
+                    item.status === "done" ? "text-emerald-300/70" : "text-white/55"
+                  }`}>
+                    {item.name}
+                    {item.status === "error" && item.error && (
+                      <span className="text-rose-400/70"> — {item.error}</span>
+                    )}
+                  </span>
+                  {item.status === "uploading" && (
+                    <span className="shrink-0 tabular-nums text-white/35">{item.progress}%</span>
+                  )}
+                  {item.status !== "uploading" && (
+                    <button
+                      type="button"
+                      onClick={() => setUploading((prev) => prev.filter((i) => i.id !== item.id))}
+                      className="shrink-0 text-white/20 hover:text-white/60"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                  )}
+                </div>
+                {item.status === "uploading" && (
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                    <div
+                      className="h-full rounded-full bg-violet-400 transition-[width] duration-150"
+                      style={{ width: `${item.progress}%` }}
+                    />
+                  </div>
                 )}
               </div>
             ))}

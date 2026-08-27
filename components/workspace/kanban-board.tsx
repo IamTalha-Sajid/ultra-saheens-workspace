@@ -182,6 +182,8 @@ export function KanbanBoard() {
     const searchParams = useSearchParams();
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
     const isDetailOpen = selectedTicketId !== null;
+    const ticketFlushRef = useRef<(() => Promise<void>) | null>(null);
+    const deadlineDateInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const tid = searchParams.get("ticketId");
@@ -241,6 +243,13 @@ export function KanbanBoard() {
         void fetchBoard();
     }, [showArchived]);
 
+    useEffect(() => {
+        if (!editingDeadlineId) return;
+        const closeOnScroll = () => setEditingDeadlineId(null);
+        window.addEventListener("scroll", closeOnScroll, true);
+        return () => window.removeEventListener("scroll", closeOnScroll, true);
+    }, [editingDeadlineId]);
+
     const requestSort = (key: keyof Ticket | "assignee") => {
         let direction: "asc" | "desc" = "asc";
         if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
@@ -252,7 +261,11 @@ export function KanbanBoard() {
     const openDeadlinePicker = (id: string, el: HTMLElement) => {
         const rect = el.getBoundingClientRect();
         const left = Math.min(rect.left, window.innerWidth - 220);
-        setEditingDeadlinePos({ top: rect.bottom + 6, left });
+        const popoverHeight = 190;
+        const top = rect.bottom + popoverHeight + 6 > window.innerHeight
+            ? Math.max(8, rect.top - popoverHeight - 6)
+            : rect.bottom + 6;
+        setEditingDeadlinePos({ top, left });
         setEditingDeadlineId(id);
     };
 
@@ -391,7 +404,7 @@ export function KanbanBoard() {
 
     const todayKey = new Date().toISOString().slice(0, 10);
     const toggleAssigneeFilter = (id: string) => {
-        setFilterAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+        setFilterAssigneeIds((prev) => (prev.length === 1 && prev[0] === id ? [] : [id]));
     };
     const toggleStatusFilter = (status: Ticket["status"]) => {
         setFilterStatuses((prev) => (prev.includes(status) ? prev.filter((x) => x !== status) : [...prev, status]));
@@ -432,25 +445,32 @@ export function KanbanBoard() {
         const matchesType = filterTypes.length === 0 || filterTypes.includes(t.type || "Task");
         const matchesTitle = !filterTitle || t.title.toLowerCase().includes(filterTitle.toLowerCase());
         return matchesAssignee && matchesStatus && matchesDueDate && matchesPastDue && matchesPriority && matchesType && matchesTitle;
+    }).sort((a, b) => {
+        // Tickets without a deadline sink to the bottom until one is set.
+        if (Boolean(a.estimate) !== Boolean(b.estimate)) return a.estimate ? -1 : 1;
+        if (a.estimate && b.estimate) return a.estimate < b.estimate ? -1 : a.estimate > b.estimate ? 1 : 0;
+        return 0;
     });
 
     const finalTickets = viewMode === "table" ? getSortedTickets(filteredTickets) : filteredTickets;
 
     const SortIndicator = ({ column }: { column: keyof Ticket | "assignee" }) => {
-        if (!sortConfig || sortConfig.key !== column) return <div className="ml-1 w-3 h-3 opacity-0 group-hover:opacity-30 transition-opacity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5-5"/></svg></div>;
+        const isActive = sortConfig?.key === column;
         return (
-            <span className="ml-1 text-violet-400">
-                {sortConfig.direction === "asc" ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden><path d="m18 15-6-6-6 6"/></svg>
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden><path d="m6 9 6 6 6-6"/></svg>
-                )}
+            <span className={`ml-1 shrink-0 transition-opacity ${isActive ? "text-violet-400 opacity-100" : "opacity-40 group-hover:opacity-70"}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={isActive ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden><polygon points="4 4 20 4 14 12 14 19 10 21 10 12 4 4"/></svg>
             </span>
         );
     };
 
     return (
-        <div className="relative flex h-full flex-col gap-4 overflow-hidden" onClick={() => { if (isDetailOpen) handleCloseModal(true); }}>
+        <div className="relative flex h-full flex-col gap-4 overflow-hidden" onClick={() => {
+            if (!isDetailOpen) return;
+            void (async () => {
+                await ticketFlushRef.current?.();
+                handleCloseModal(true);
+            })();
+        }}>
             {/* ── Professional filter bar ── */}
             <div className="flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-[var(--surface-mid)] px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3 no-scrollbar">
                 <div className="relative flex items-center gap-2">
@@ -757,7 +777,7 @@ export function KanbanBoard() {
                                                     </button>
                                                 </div>
                                                 <div className="mb-1 flex items-center gap-1.5">
-                                                    <span className="text-[10px] font-bold tracking-wider text-violet-400/80">US-{t.sid}</span>
+                                                    <span className="text-xs font-bold tracking-wider text-violet-400">US-{t.sid}</span>
                                                 </div>
                                                 <p className="pr-4 text-sm font-medium leading-snug text-white/90">{t.title}</p>
 
@@ -926,7 +946,7 @@ export function KanbanBoard() {
                                         }`}
                                     >
                                         <td className="py-3.5 pl-5 pr-2">
-                                            <span className="text-[11px] font-bold text-violet-400/70 shrink-0">US-{t.sid}</span>
+                                            <span className="text-sm font-bold text-violet-400 shrink-0">US-{t.sid}</span>
                                         </td>
                                         <td className="py-3.5 px-4">
                                             <span className="font-medium max-w-[400px] truncate block">{t.title}</span>
@@ -1066,8 +1086,22 @@ export function KanbanBoard() {
                         className="fixed z-[310] w-52 rounded-2xl border border-white/[0.12] bg-[rgba(18,18,20,0.97)] p-3 shadow-[0_16px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl"
                         style={{ top: editingDeadlinePos.top, left: editingDeadlinePos.left }}
                     >
-                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/35">Set Deadline</p>
+                        <div className="mb-2 flex items-center justify-between">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-white/35">Set Deadline</p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const today = new Date().toISOString().slice(0, 10);
+                                    if (deadlineDateInputRef.current) deadlineDateInputRef.current.value = today;
+                                    void updateDeadline(editingDeadlineId, new Date(today + "T12:00:00").toISOString());
+                                }}
+                                className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-300"
+                            >
+                                Today
+                            </button>
+                        </div>
                         <input
+                            ref={deadlineDateInputRef}
                             type="date"
                             autoFocus
                             defaultValue={tickets.find((t) => t._id === editingDeadlineId)?.estimate?.split("T")[0] ?? ""}
@@ -1254,6 +1288,7 @@ export function KanbanBoard() {
                             <TicketDetail
                                 ticketId={selectedTicketId}
                                 onClose={handleCloseModal}
+                                flushRef={ticketFlushRef}
                             />
                         </div>
                     </div>

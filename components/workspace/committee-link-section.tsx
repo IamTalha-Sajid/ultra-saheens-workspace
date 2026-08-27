@@ -130,7 +130,7 @@ export function CommitteeLinkSection() {
     setLoading(true);
     setError(null);
     try {
-      const folderQ = folderId ? `?parentId=${folderId}` : "";
+      const folderQ = folderId ? `?type=link&parentId=${folderId}` : "?type=link";
       const linkQ = folderId ? `?folderId=${folderId}` : "";
       const [fRes, lRes] = await Promise.all([
         fetch(`/api/committee-folders${folderQ}`),
@@ -177,7 +177,7 @@ export function CommitteeLinkSection() {
     const res = await fetch("/api/committee-folders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, parentId: currentFolderId }),
+      body: JSON.stringify({ name, type: "link", parentId: currentFolderId }),
     });
     if (res.ok) void load(currentFolderId);
     else setError("Could not create folder.");

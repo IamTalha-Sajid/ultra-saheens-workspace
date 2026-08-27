@@ -211,7 +211,9 @@ export async function PATCH(
     ticket.estimate = String(body.estimate);
   }
   if (body.archived !== undefined) {
-    ticket.archived = Boolean(body.archived);
+    const nextArchived = Boolean(body.archived);
+    ticket.archived = nextArchived;
+    ticket.archivedAt = nextArchived ? new Date() : undefined;
   }
 
   const nextAssigneeOid = parseAssigneeId(body.assigneeId);
