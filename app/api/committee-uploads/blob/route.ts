@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json(json);
   } catch (err) {
     console.error("committee-uploads blob token failed:", err);
-    return NextResponse.json({ error: "Could not start upload." }, { status: 400 });
+    const message = err instanceof Error ? err.message : "Could not start upload.";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
