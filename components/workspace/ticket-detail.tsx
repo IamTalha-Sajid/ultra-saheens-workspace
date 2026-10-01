@@ -593,7 +593,7 @@ export function TicketDetail({ ticketId, onClose, flushRef }: {
                         </Link>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                         <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${TYPE_COLORS[ticket.type] ?? TYPE_COLORS.Task}`}>
                             {ticket.type}
                         </span>
@@ -608,21 +608,22 @@ export function TicketDetail({ ticketId, onClose, flushRef }: {
                         )}
 
                         {/* Autosave status */}
-                        {(saveState === "saving" || saveState === "saved") && (
-                            <span className="ml-2 flex items-center gap-1.5 text-xs font-medium text-white/40">
-                                {saveState === "saving" ? (
-                                    <>
-                                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white/70" />
-                                        Saving…
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-400" />
-                                        Saved
-                                    </>
-                                )}
-                            </span>
-                        )}
+                        {/* Fixed width, always rendered: appearing/disappearing would wrap the bar and shift the page */}
+                        <span
+                            className={`ml-2 flex w-[68px] shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-white/40 ${saveState === "saving" || saveState === "saved" ? "" : "invisible"}`}
+                        >
+                            {saveState === "saving" ? (
+                                <>
+                                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white/70" />
+                                    Saving…
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircleIcon className="h-3.5 w-3.5 text-emerald-400" />
+                                    Saved
+                                </>
+                            )}
+                        </span>
                     </div>
                 </div>
 
@@ -908,25 +909,34 @@ export function TicketDetail({ ticketId, onClose, flushRef }: {
 
                     {/* Deadline */}
                     <DetailRow icon={<ClockIcon className="h-4 w-4" />} label="Deadline">
-                        <button
-                            type="button"
-                            onClick={() => {
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                value={ticket.estimate ? ticket.estimate.split('T')[0] : ""}
+                                onChange={(e) => {
+                                    setTicket({ ...ticket, estimate: e.target.value });
+                                }}
+                                className="glass-input min-w-0 flex-1 cursor-pointer py-2.5 text-sm [color-scheme:dark]"
+                            />
+                            {(() => {
                                 const now = new Date();
                                 const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-                                setTicket({ ...ticket, estimate: today });
-                            }}
-                            className="mb-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-300"
-                        >
-                            Today
-                        </button>
-                        <input
-                            type="date"
-                            value={ticket.estimate ? ticket.estimate.split('T')[0] : ""}
-                            onChange={(e) => {
-                                setTicket({ ...ticket, estimate: e.target.value });
-                            }}
-                            className="glass-input cursor-pointer py-2.5 text-sm [color-scheme:dark]"
-                        />
+                                const isToday = ticket.estimate?.split('T')[0] === today;
+                                return (
+                                    <button
+                                        type="button"
+                                        onClick={() => setTicket({ ...ticket, estimate: today })}
+                                        disabled={isToday}
+                                        title="Set deadline to today"
+                                        className={`shrink-0 rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all ${isToday
+                                            ? "cursor-default border-violet-400/40 bg-violet-500/20 text-violet-200"
+                                            : "border-white/10 bg-white/[0.04] text-white/70 hover:border-violet-400/40 hover:bg-violet-500/15 hover:text-violet-200"}`}
+                                    >
+                                        Today
+                                    </button>
+                                );
+                            })()}
+                        </div>
                         {ticket.estimate && (
                             <p className="mt-1 text-[11px] text-[var(--text-muted)]">
                                 {new Date(ticket.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, {
