@@ -359,8 +359,11 @@ export function TicketDetail({ ticketId, onClose, flushRef }: {
 
     useEffect(() => {
         if (!titleEditor || !ticket) return;
+        // While typing, the editor is the source of truth; resetting its content
+        // here moves the caret to the end and scrolls the page.
+        if (titleEditor.isFocused) return;
         const nextTitle = ticket.title || "";
-        if (titleEditor.getText() !== nextTitle) {
+        if (titleEditor.getText().trim() !== nextTitle) {
             titleEditor.commands.setContent(nextTitle);
         }
     }, [titleEditor, ticket?._id, ticket?.title]);
@@ -905,6 +908,17 @@ export function TicketDetail({ ticketId, onClose, flushRef }: {
 
                     {/* Deadline */}
                     <DetailRow icon={<ClockIcon className="h-4 w-4" />} label="Deadline">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const now = new Date();
+                                const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                                setTicket({ ...ticket, estimate: today });
+                            }}
+                            className="mb-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-300"
+                        >
+                            Today
+                        </button>
                         <input
                             type="date"
                             value={ticket.estimate ? ticket.estimate.split('T')[0] : ""}

@@ -51,7 +51,7 @@ const TicketSchema = new Schema<TicketDoc>(
     { timestamps: true }
 );
 
-TicketSchema.index({ archivedAt: 1 }, { expireAfterSeconds: 14 * 24 * 60 * 60 });
+TicketSchema.index({ archivedAt: 1 }, { expireAfterSeconds: 28 * 24 * 60 * 60 });
 
 const Ticket = models.Ticket ?? model<TicketDoc>("Ticket", TicketSchema);
 

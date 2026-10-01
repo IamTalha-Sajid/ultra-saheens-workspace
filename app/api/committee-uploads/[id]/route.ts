@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { del } from "@vercel/blob";
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 import mongoose from "mongoose";
@@ -26,12 +27,15 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const diskPath = path.join(process.cwd(), "public", "uploads", "committee", upload.storedName);
+  // Best-effort cleanup. DB record is already removed.
   try {
-    await unlink(diskPath);
-  } catch {
-    // Best-effort cleanup. DB record is already removed.
-  }
+    if (upload.url.startsWith("https://")) {
+      await del(upload.url);
+    } else {
+      const diskPath = path.join(process.cwd(), "public", "uploads", "committee", upload.storedName);
+      await unlink(diskPath);
+    }
+  } catch {}
 
   return NextResponse.json({ ok: true });
 }

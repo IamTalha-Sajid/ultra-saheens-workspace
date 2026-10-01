@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { upload } from "@vercel/blob/client";
+import { resolveMimeType } from "@/lib/committee-upload";
 
 type FolderItem = {
   _id: string;
@@ -40,25 +42,38 @@ async function parseJsonSafe<T>(res: Response): Promise<T | null> {
   }
 }
 
-function uploadWithProgress(
-  url: string,
-  form: FormData,
+async function uploadWithProgress(
+  file: File,
+  folderId: string | null,
   onProgress: (pct: number) => void
 ): Promise<{ ok: boolean; data: { error?: string } | null }> {
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () => {
-      let data: { error?: string } | null = null;
-      try { data = JSON.parse(xhr.responseText); } catch { /* ignore */ }
-      resolve({ ok: xhr.status >= 200 && xhr.status < 300, data });
-    };
-    xhr.onerror = () => resolve({ ok: false, data: null });
-    xhr.send(form);
-  });
+  const mimeType = resolveMimeType(file.name, file.type);
+  if (!mimeType) return { ok: false, data: { error: "Unsupported file type" } };
+  try {
+    const blob = await upload(`committee/${file.name}`, file, {
+      access: "public",
+      handleUploadUrl: "/api/committee-uploads/blob",
+      contentType: mimeType,
+      multipart: file.size > 8 * 1024 * 1024,
+      onUploadProgress: ({ percentage }) => onProgress(Math.round(percentage)),
+    });
+    const res = await fetch("/api/committee-uploads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: file.name,
+        folderId,
+        url: blob.url,
+        pathname: blob.pathname,
+        originalName: file.name,
+        mimeType,
+        size: file.size,
+      }),
+    });
+    return { ok: res.ok, data: await parseJsonSafe<{ error?: string }>(res) };
+  } catch (err) {
+    return { ok: false, data: { error: err instanceof Error ? err.message : "Upload failed" } };
+  }
 }
 
 function formatBytes(n: number): string {
@@ -193,11 +208,7 @@ export function CommitteeUploadSection() {
       fileList.map(async (file, i) => {
         const itemId = items[i].id;
         try {
-          const form = new FormData();
-          form.append("title", file.name);
-          form.append("file", file);
-          if (folderId) form.append("folderId", folderId);
-          const { ok, data } = await uploadWithProgress("/api/committee-uploads", form, (pct) => {
+          const { ok, data } = await uploadWithProgress(file, folderId, (pct) => {
             setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, progress: pct } : it)));
           });
           if (!ok) throw new Error(data?.error || "Upload failed");
@@ -275,11 +286,7 @@ export function CommitteeUploadSection() {
         try {
           const parts = file.webkitRelativePath.split("/");
           const folderId = await ensureFolder(parts.slice(0, -1));
-          const form = new FormData();
-          form.append("title", file.name);
-          form.append("file", file);
-          form.append("folderId", folderId);
-          const { ok, data } = await uploadWithProgress("/api/committee-uploads", form, (pct) => {
+          const { ok, data } = await uploadWithProgress(file, folderId, (pct) => {
             setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, progress: pct } : it)));
           });
           if (!ok) throw new Error(data?.error ?? "Upload failed");
@@ -353,11 +360,7 @@ export function CommitteeUploadSection() {
         filesToUpload.map(async ({ file, folderId }, i) => {
           const itemId = uploadItems[i].id;
           try {
-            const form = new FormData();
-            form.append("title", file.name);
-            form.append("file", file);
-            if (folderId) form.append("folderId", folderId);
-            const { ok, data } = await uploadWithProgress("/api/committee-uploads", form, (pct) => {
+            const { ok, data } = await uploadWithProgress(file, folderId, (pct) => {
               setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, progress: pct } : it)));
             });
             if (!ok) throw new Error(data?.error || "Upload failed");
@@ -433,11 +436,7 @@ export function CommitteeUploadSection() {
         filesToUpload.map(async ({ file, folderId }, i) => {
           const itemId = uploadItems[i].id;
           try {
-            const form = new FormData();
-            form.append("title", file.name);
-            form.append("file", file);
-            if (folderId) form.append("folderId", folderId);
-            const { ok, data } = await uploadWithProgress("/api/committee-uploads", form, (pct) => {
+            const { ok, data } = await uploadWithProgress(file, folderId, (pct) => {
               setUploading((prev) => prev.map((it) => (it.id === itemId ? { ...it, progress: pct } : it)));
             });
             if (!ok) throw new Error(data?.error || "Upload failed");
@@ -632,7 +631,7 @@ export function CommitteeUploadSection() {
             <span className="w-7" />
             <span className="pl-2.5">Name</span>
             <span className="flex items-center gap-8 pr-1">
-              <span className="hidden w-28 sm:block">Created by</span>
+              <span className="hidden w-28 sm:block">Uploaded/created by</span>
               <span className="hidden w-20 text-right sm:block">Date</span>
               <span className="w-14 text-right">Size</span>
               <span className="w-16 text-right">Actions</span>
@@ -674,7 +673,7 @@ export function CommitteeUploadSection() {
         {folders.map((folder) => (
           <div
             key={folder._id}
-            className="group grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.03] px-4 py-2 transition-colors hover:bg-white/[0.03] md:px-5"
+            className="group grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.03] px-4 py-2 md:px-5"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 text-amber-400/75">
               <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15zM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 12h-15a4.483 4.483 0 0 0-3 1.146V10.146z"/>
@@ -699,12 +698,12 @@ export function CommitteeUploadSection() {
                 type="button"
                 onClick={() => navigateTo(folder)}
                 onDoubleClick={(e) => { e.stopPropagation(); startRenameFolder(folder); }}
-                className="min-w-0 pl-2.5 text-left"
+                className="ml-1.5 min-w-0 cursor-pointer rounded-md px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.06]"
               >
                 <span className="block truncate text-sm font-medium text-white/85 hover:text-white">{folder.name}</span>
               </button>
             )}
-            <div className="flex cursor-default items-center gap-8 pr-1">
+            <div className="ml-3 flex cursor-default select-none items-center gap-8 border-l border-white/[0.06] pl-4 pr-1">
               <span className="hidden w-28 text-xs text-white/30 sm:block">—</span>
               <span className="hidden w-20 text-right text-xs text-white/30 sm:block">
                 {new Date(folder.createdAt).toLocaleDateString()}
@@ -738,21 +737,21 @@ export function CommitteeUploadSection() {
           return (
             <div
               key={file._id}
-              className="group grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.03] px-4 py-2 transition-colors last:border-b-0 hover:bg-white/[0.03] md:px-5"
+              className="group grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.03] px-4 py-2 last:border-b-0 md:px-5"
             >
               <FileTypeIcon mime={file.mimeType} />
               <a
                 href={file.url}
                 target="_blank"
                 rel="noreferrer"
-                className="min-w-0 pl-2.5"
+                className="ml-1.5 min-w-0 cursor-pointer rounded-md px-2.5 py-1.5 transition-colors hover:bg-white/[0.06]"
               >
                 <p className="truncate text-sm font-medium text-white/85 hover:text-white">{file.title}</p>
                 {file.details && (
                   <p className="truncate text-[11px] text-white/35">{file.details}</p>
                 )}
               </a>
-              <div className="flex cursor-default items-center gap-8 pr-1">
+              <div className="ml-3 flex cursor-default select-none items-center gap-8 border-l border-white/[0.06] pl-4 pr-1">
                 <span className="hidden w-28 truncate text-xs text-white/40 sm:block">{by}</span>
                 <span className="hidden w-20 text-right text-xs text-white/40 sm:block">
                   {new Date(file.createdAt).toLocaleDateString()}
