@@ -1,39 +1,29 @@
 /**
  * Ultra Shaheens Logo Color Palette (Legacy)
- * Remapped to the new neutral/violet premium colorway
+ * Brand values from the public Ultra Shaheens site.
  */
 
 :root {
-  /* Ultra Shaheens Colors - Remapped to Zinc and Violet/Indigo */
-  --canary: #e0e7ff;
-  /* Indigo 100 */
-  --celery: #a5b4fc;
-  /* Indigo 300 */
-  --racing-green: #09090b;
-  /* Zinc 950 */
-  --gray-nickel: #a1a1aa;
-  /* Zinc 400 */
-  --la-palma: #6366f1;
-  /* Indigo 500 (was bright green) */
-  --xanadu: #71717a;
-  /* Zinc 500 */
-  --asparagus: #8b5cf6;
-  /* Violet 500 */
-  --dark-fern: #1e1b4b;
-  /* Indigo 950 */
-  --dell: #4f46e5;
-  /* Indigo 600 */
+  --canary: #f3f754;
+  --celery: #b0bb4c;
+  --racing-green: #121e18;
+  --gray-nickel: #c4c5c3;
+  --la-palma: #3c8a0d;
+  --xanadu: #7a7b7a;
+  --asparagus: #7ca667;
+  --dark-fern: #12400a;
+  --dell: #286411;
 
   /* RGB Values */
-  --canary-rgb: 224, 231, 255;
-  --celery-rgb: 165, 180, 252;
-  --racing-green-rgb: 9, 9, 11;
-  --gray-nickel-rgb: 161, 161, 170;
-  --la-palma-rgb: 99, 102, 241;
-  --xanadu-rgb: 113, 113, 122;
-  --asparagus-rgb: 139, 92, 246;
-  --dark-fern-rgb: 30, 27, 75;
-  --dell-rgb: 79, 70, 229;
+  --canary-rgb: 243, 247, 84;
+  --celery-rgb: 176, 187, 76;
+  --racing-green-rgb: 18, 30, 24;
+  --gray-nickel-rgb: 196, 197, 195;
+  --la-palma-rgb: 60, 138, 13;
+  --xanadu-rgb: 122, 123, 122;
+  --asparagus-rgb: 124, 166, 103;
+  --dark-fern-rgb: 18, 64, 10;
+  --dell-rgb: 40, 100, 17;
 }
 
 /* Utility classes for quick access */
