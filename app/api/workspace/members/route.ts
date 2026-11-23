@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import { getSessionUserId } from "@/lib/auth-api";
+import { requireRole } from "@/lib/auth-api";
 import User from "@/models/User";
 import Ticket from "@/models/Ticket";
 
 export async function GET() {
-    const userId = await getSessionUserId();
-    if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { error } = await requireRole("admin", "member");
+    if (error) return error;
 
     await connectDB();
 
-    const users = await User.find({}, "name email username createdAt designation").lean();
+    const users = await User.find({}, "name email username createdAt designation role").lean();
 
     const usersWithStats = await Promise.all(users.map(async (user) => {
         const assigneeFilter = { $or: [{ assigneeIds: user._id }, { assigneeId: user._id }] };

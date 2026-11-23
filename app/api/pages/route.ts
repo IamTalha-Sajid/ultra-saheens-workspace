@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getSessionUserId } from "@/lib/auth-api";
+import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import Page from "@/models/Page";
 
 type PopulatedCreator = {
   _id: mongoose.Types.ObjectId;
   name?: string;
-  email: string;
+  email?: string;
   username?: string;
 };
 
@@ -15,11 +16,12 @@ function createdByFromPage(p: {
   userId: PopulatedCreator | mongoose.Types.ObjectId | null | undefined;
 }) {
   const u = p.userId;
-  if (u && typeof u === "object" && "email" in u) {
+  // Populated user doc (directors have no email, so don't test for it).
+  if (u && typeof u === "object" && !(u instanceof mongoose.Types.ObjectId)) {
     return {
       _id: String(u._id),
       name: u.name ?? "",
-      email: u.email,
+      email: u.email ?? "",
       username: u.username,
     };
   }
@@ -53,7 +55,8 @@ function listItem(
   };
 }
 
-export async function GET() {
+export const GET = redactForDirectors(handleGET);
+async function handleGET() {
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -80,7 +83,8 @@ export async function GET() {
   });
 }
 
-export async function POST(request: Request) {
+export const POST = redactForDirectors(handlePOST);
+async function handlePOST(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

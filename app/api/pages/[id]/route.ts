@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
 import { getSessionUserId } from "@/lib/auth-api";
+import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { createNotificationsForNewMentions } from "@/lib/notifications/sync-mention-notifications";
 import Page from "@/models/Page";
@@ -37,7 +38,8 @@ function parsePageContent(raw: string): unknown {
   }
 }
 
-export async function GET(
+export const GET = redactForDirectors(handleGET);
+async function handleGET(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
@@ -65,12 +67,11 @@ export async function GET(
     u &&
     typeof u === "object" &&
     u !== null &&
-    "email" in u &&
-    typeof (u as { email: unknown }).email === "string"
+    !(u instanceof mongoose.Types.ObjectId)
       ? (u as {
           _id: mongoose.Types.ObjectId;
           name?: string;
-          email: string;
+          email?: string;
           username?: string;
         })
       : null;
@@ -79,7 +80,7 @@ export async function GET(
     ? {
         _id: String(populated._id),
         name: populated.name ?? "",
-        email: populated.email,
+        email: populated.email ?? "",
         username: populated.username,
       }
     : {
@@ -98,7 +99,8 @@ export async function GET(
   });
 }
 
-export async function PATCH(
+export const PATCH = redactForDirectors(handlePATCH);
+async function handlePATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {

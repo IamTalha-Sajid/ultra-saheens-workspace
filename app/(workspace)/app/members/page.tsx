@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { DirectorAdminPanel } from "@/components/workspace/director-admin-panel";
 
 type Member = {
     _id: string;
     name: string;
-    email: string;
+    email?: string;
+    role?: "admin" | "member" | "director";
     username?: string;
     designation?: string;
     createdAt: string;
@@ -33,21 +36,23 @@ function avatarGradient(name: string): string {
 export default function MembersPage() {
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
+    const { data: session } = useSession();
+
+    const fetchMembers = useCallback(async () => {
+        try {
+            const res = await fetch("/api/workspace/members");
+            if (res.ok) {
+                const data = await res.json();
+                setMembers(data.members);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchMembers = async () => {
-            try {
-                const res = await fetch("/api/workspace/members");
-                if (res.ok) {
-                    const data = await res.json();
-                    setMembers(data.members);
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchMembers();
-    }, []);
+        void fetchMembers();
+    }, [fetchMembers]);
 
     if (loading) {
         return (
@@ -72,9 +77,15 @@ export default function MembersPage() {
             </header>
 
             <main className="flex-1 overflow-y-auto p-4 md:p-6">
+                {session?.user?.role === "admin" && (
+                    <DirectorAdminPanel
+                        directors={members.filter((m) => m.role === "director")}
+                        onCreated={() => void fetchMembers()}
+                    />
+                )}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {members.map((member) => {
-                        const displayName = member.name || member.email.split("@")[0];
+                        const displayName = member.name || member.email?.split("@")[0] || member.username || "Member";
                         const gradient = avatarGradient(displayName);
 
                         return (
@@ -88,7 +99,7 @@ export default function MembersPage() {
                                         {member.designation && (
                                             <p className="truncate text-[10px] font-bold uppercase tracking-tight text-amber-500/80">{member.designation}</p>
                                         )}
-                                        <p className="truncate text-xs text-[var(--text-muted)]">{member.email}</p>
+                                        {member.email && <p className="truncate text-xs text-[var(--text-muted)]">{member.email}</p>}
                                     </div>
                                 </div>
 

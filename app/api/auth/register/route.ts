@@ -43,6 +43,7 @@ export async function POST(request: Request) {
   await User.create({
     email: emailRaw,
     name: name.slice(0, 120),
+    role: "member",
     passwordHash,
   });
 

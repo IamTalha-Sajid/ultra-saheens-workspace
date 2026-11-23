@@ -108,6 +108,7 @@ export function WorkspaceMain() {
     const email = session?.user?.email?.trim();
     const firstName =
       name?.split(/\s+/).find(Boolean) ||
+      session?.user?.username ||
       (email?.includes("@") ? email.split("@")[0] : email) ||
       "";
 
@@ -186,6 +187,7 @@ export function WorkspaceMain() {
                     <p className="text-[10px] text-white/40 italic">Manage your account</p>
                   </div>
                 </a>
+                {session?.user?.role !== "director" && (
                 <a href="/app/members" className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 transition-all hover:bg-white/[0.04]">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
@@ -195,6 +197,7 @@ export function WorkspaceMain() {
                     <p className="text-[10px] text-white/40 italic">View workspace team</p>
                   </div>
                 </a>
+                )}
               </div>
             </div>
           </section>

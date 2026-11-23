@@ -11,6 +11,7 @@ export function WorkspaceShell({
   displayName,
   username,
   designation,
+  role,
   children,
 }: {
   userId: string;
@@ -18,6 +19,7 @@ export function WorkspaceShell({
   displayName: string;
   username?: string;
   designation?: string;
+  role: "admin" | "member" | "director";
   children: ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -73,6 +75,7 @@ export function WorkspaceShell({
               displayName={displayName}
               username={username}
               designation={designation}
+              role={role}
               onClose={() => setIsSidebarOpen(false)}
             />
           </Suspense>

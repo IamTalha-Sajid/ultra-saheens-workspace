@@ -21,6 +21,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
+  // Directors can use the board, pages, files, links and profile only.
+  // (API routes enforce this too; this just keeps them off the dead pages.)
+  const { pathname } = request.nextUrl;
+  if (
+    token?.role === "director" &&
+    (pathname.startsWith("/app/members") || pathname.startsWith("/app/merch"))
+  ) {
+    return NextResponse.redirect(new URL("/app/board", request.nextUrl.origin));
+  }
+
   return NextResponse.next();
 }
 

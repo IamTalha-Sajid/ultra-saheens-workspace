@@ -39,6 +39,8 @@ function PencilIcon({ className }: { className?: string }) {
 }
 
 export function ProfileForm({ initial }: { initial: ProfilePayload }) {
+  // Accounts without an email (directors) sign in by username; no email UI for them.
+  const hasEmail = Boolean(initial.email);
   const router = useRouter();
   const { update } = useSession();
   const [baseline, setBaseline] = useState(initial);
@@ -258,6 +260,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
                 {designation.trim() ? designation.trim() : "—"}
               </dd>
             </div>
+            {hasEmail && (
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
                 Email
@@ -266,6 +269,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
                 {email}
               </dd>
             </div>
+            )}
           </dl>
         ) : (
           <form onSubmit={saveProfile} className="mt-6">
@@ -312,6 +316,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
                 aria-label="Designation"
               />
             </label>
+            {hasEmail && (
             <label className="mt-4 block">
               <span className="text-sm font-medium text-[var(--text-muted)]">Email</span>
               <input
@@ -327,6 +332,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
                 current password.
               </span>
             </label>
+            )}
             {emailChanged ? (
               <label className="mt-4 block">
                 <span className="text-sm font-medium text-[var(--text-muted)]">

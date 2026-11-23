@@ -26,7 +26,7 @@ export function LoginForm() {
         callbackUrl,
       });
       if (res?.error) {
-        setError("Invalid email or password.");
+        setError("Invalid email/username or password.");
         return;
       }
       window.location.href = callbackUrl;
@@ -53,7 +53,7 @@ export function LoginForm() {
           Welcome back
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-          Sign in with your @ultrashaheens.com account
+          Sign in with your @ultrashaheens.com account, or your director username
         </p>
       </div>
 
@@ -63,18 +63,19 @@ export function LoginForm() {
             htmlFor="email"
             className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]"
           >
-            Email
+            Email or username
           </label>
           <input
             id="email"
             name="email"
-            type="email"
-            autoComplete="email"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="glass-input"
-            placeholder="you@ultrashaheens.com"
+            placeholder="you@ultrashaheens.com or username"
           />
         </div>
         <div>

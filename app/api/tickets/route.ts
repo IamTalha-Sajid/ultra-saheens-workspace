@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getSessionUserId } from "@/lib/auth-api";
+import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import Ticket from "@/models/Ticket";
@@ -11,12 +12,14 @@ import "@/models/User"; // ensure User schema is registered for populate()
 type PopulatedUser = {
   _id: mongoose.Types.ObjectId;
   name?: string;
-  email: string;
+  email?: string;
   username?: string;
 };
 
+// A populated ref is a user document; an unpopulated one is a bare ObjectId.
+// (Don't test for `email`: directors have none.)
 function isPopulatedUser(u: unknown): u is PopulatedUser {
-  return typeof u === "object" && u !== null && "email" in u;
+  return typeof u === "object" && u !== null && !(u instanceof mongoose.Types.ObjectId);
 }
 
 function serializeTicket(
@@ -64,7 +67,8 @@ function serializeTicket(
   };
 }
 
-export async function GET(request: Request) {
+export const GET = redactForDirectors(handleGET);
+async function handleGET(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -88,7 +92,8 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+export const POST = redactForDirectors(handlePOST);
+async function handlePOST(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { isAllowedEmail } from "@/lib/domain";
-import User from "@/models/User";
+import User, { type UserRole } from "@/models/User";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
@@ -28,11 +28,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         ) {
           return null;
         }
-        const email = emailRaw.toLowerCase().trim();
-        if (!isAllowedEmail(email)) return null;
+        // The "email" field accepts either an email address or a username
+        // (directors have no company email and sign in with a username).
+        const identifier = emailRaw.toLowerCase().trim();
+        const byEmail = identifier.includes("@");
+        if (byEmail && !isAllowedEmail(identifier)) return null;
 
         await connectDB();
-        const user = await User.findOne({ email }).lean();
+        const user = await User.findOne(
+          byEmail ? { email: identifier } : { username: identifier }
+        ).lean();
         if (!user?.passwordHash) return null;
 
         const valid = await compare(passwordRaw, user.passwordHash);
@@ -40,10 +45,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         return {
           id: String(user._id),
-          email: user.email,
+          email: user.email ?? "",
           name: user.name ?? "",
           username: user.username ?? "",
           designation: user.designation ?? "",
+          role: user.role ?? "member",
         };
       },
     }),
@@ -56,7 +62,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.sub = user.id;
-        token.email = user.email ?? undefined;
+        token.email = user.email || undefined;
+        token.role = (user as { role?: UserRole }).role ?? "member";
         token.name = user.name ?? "";
         token.username = (user as { username?: string }).username ?? "";
         token.designation = (user as { designation?: string }).designation ?? "";
@@ -77,6 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.name = (token.name as string) ?? "";
         session.user.username = (token.username as string) ?? "";
         session.user.designation = (token.designation as string) ?? "";
+        session.user.role = token.role ?? "member";
       }
       return session;
     },

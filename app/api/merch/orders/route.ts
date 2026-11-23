@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSessionUserId } from "@/lib/auth-api";
+import { requireRole } from "@/lib/auth-api";
 import { getShopDb } from "@/lib/shopDb";
 
 export async function GET() {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { error } = await requireRole("admin", "member");
+  if (error) return error;
 
   const db = await getShopDb();
   const orders = await db

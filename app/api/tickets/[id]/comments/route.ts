@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
 import { getSessionUserId } from "@/lib/auth-api";
+import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import { collectMentionIdsAndLabels } from "@/lib/tiptap/collect-mentions";
@@ -19,7 +20,8 @@ type PopulatedUser = {
   username?: string;
 };
 
-export async function POST(
+export const POST = redactForDirectors(handlePOST);
+async function handlePOST(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {

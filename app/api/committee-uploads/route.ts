@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getSessionUserId } from "@/lib/auth-api";
+import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { MAX_FILE_SIZE, resolveMimeType } from "@/lib/committee-upload";
 import CommitteeUpload from "@/models/CommitteeUpload";
@@ -24,7 +25,8 @@ function uploaderToJson(raw: unknown): { _id: string; name: string; email: strin
   };
 }
 
-export async function GET(request: Request) {
+export const GET = redactForDirectors(handleGET);
+async function handleGET(request: Request) {
   const userId = await getSessionUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -60,7 +62,8 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+export const POST = redactForDirectors(handlePOST);
+async function handlePOST(request: Request) {
   try {
     const userId = await getSessionUserId();
     if (!userId) {

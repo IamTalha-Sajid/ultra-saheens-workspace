@@ -108,6 +108,7 @@ export function PageSidebar({
   displayName,
   username,
   designation,
+  role,
   onClose,
 }: {
   currentUserId: string;
@@ -115,8 +116,10 @@ export function PageSidebar({
   displayName: string;
   username?: string;
   designation?: string;
+  role: "admin" | "member" | "director";
   onClose?: () => void;
 }) {
+  const isDirector = role === "director";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -237,6 +240,7 @@ export function PageSidebar({
             </span>
             <span className="font-medium text-white/90">Executive Links</span>
           </Link>
+          {!isDirector && (
           <Link href="/app/merch" onClick={onClose} className={`glass-nav-item border border-rose-500/15 shadow-[0_0_8px_rgba(244,63,94,0.06)] hover:bg-rose-500/10 ${pathname === "/app/merch" ? "bg-rose-500/20 text-white shadow-inner" : ""}`}>
             <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-rose-500 to-pink-600">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
@@ -245,6 +249,7 @@ export function PageSidebar({
             </span>
             <span className="font-medium text-white/90">Executive Merch</span>
           </Link>
+          )}
         </div>
         <span className="glass-pill mb-2 w-fit px-2 py-1">Pages</span>
         {loading ? (
@@ -268,6 +273,7 @@ export function PageSidebar({
       </nav>
 
       <div className="mt-auto pt-4 pb-1">
+        {!isDirector && (
         <Link href="/app/members" onClick={onClose} className={`glass-nav-item mb-4 border border-amber-500/15 shadow-[0_0_8px_rgba(245,158,11,0.06)] hover:bg-amber-500/10 ${pathname === "/app/members" ? "bg-amber-500/20 text-white shadow-inner" : ""}`}>
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-amber-500 to-orange-600">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
@@ -276,6 +282,7 @@ export function PageSidebar({
           </span>
           <span className="font-medium text-white/90">Workforce & Members</span>
         </Link>
+        )}
 
         <Link
           href="/app/profile"
@@ -288,7 +295,7 @@ export function PageSidebar({
             {designation && (
               <p className="truncate text-[11px] font-semibold text-amber-500/90">{designation}</p>
             )}
-            <p className="truncate text-xs font-medium text-white/40">{email}</p>
+            {email && <p className="truncate text-xs font-medium text-white/40">{email}</p>}
           </div>
         </Link>
         <div className="px-1">

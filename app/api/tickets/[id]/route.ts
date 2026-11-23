@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
 import { getSessionUserId } from "@/lib/auth-api";
+import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import { collectMentionIdsAndLabels } from "@/lib/tiptap/collect-mentions";
@@ -16,12 +17,14 @@ import type { TicketDoc } from "@/models/Ticket";
 type PopulatedUser = {
   _id: mongoose.Types.ObjectId;
   name?: string;
-  email: string;
+  email?: string;
   username?: string;
 };
 
+// A populated ref is a user document; an unpopulated one is a bare ObjectId.
+// (Don't test for `email`: directors have none.)
 function isPopulatedUser(u: unknown): u is PopulatedUser {
-  return typeof u === "object" && u !== null && "email" in u;
+  return typeof u === "object" && u !== null && !(u instanceof mongoose.Types.ObjectId);
 }
 
 function serializeTicket(
@@ -68,7 +71,8 @@ const PRIORITIES: TicketDoc["priority"][] = [
 ];
 const TYPES: TicketDoc["type"][] = ["Task", "Bug", "Story", "Epic"];
 
-export async function GET(
+export const GET = redactForDirectors(handleGET);
+async function handleGET(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
@@ -138,7 +142,8 @@ function parseAssigneeIds(raw: unknown): mongoose.Types.ObjectId[] | undefined {
   return uniq.map((id) => new mongoose.Types.ObjectId(id));
 }
 
-export async function PATCH(
+export const PATCH = redactForDirectors(handlePATCH);
+async function handlePATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {

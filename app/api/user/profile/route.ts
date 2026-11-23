@@ -25,7 +25,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    email: user.email,
+    email: user.email ?? "",
     name: user.name ?? "",
     username: user.username ?? "",
     designation: user.designation ?? "",
@@ -73,6 +73,13 @@ export async function PATCH(request: Request) {
     const prev = (user.username ?? "").toLowerCase().trim();
     usernameDirty = usernameNormalized !== prev;
     if (usernameDirty) {
+      // Without an email, the username is the only way to sign in.
+      if (usernameNormalized === "" && !user.email) {
+        return NextResponse.json(
+          { error: "Username can't be empty: it is how you sign in." },
+          { status: 400 }
+        );
+      }
       const formatError = validateUsernameFormat(usernameNormalized);
       if (formatError) {
         return NextResponse.json({ error: formatError }, { status: 400 });
@@ -201,7 +208,7 @@ export async function PATCH(request: Request) {
   return NextResponse.json({
     ok: true,
     user: {
-      email: fresh.email,
+      email: fresh.email ?? "",
       name: fresh.name ?? "",
       username: fresh.username ?? "",
       designation: fresh.designation ?? "",

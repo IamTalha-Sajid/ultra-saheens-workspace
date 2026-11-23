@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getSessionUserId } from "@/lib/auth-api";
+import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import CommitteeLink from "@/models/CommitteeLink";
 
-export async function PATCH(
+export const PATCH = redactForDirectors(handlePATCH);
+async function handlePATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {

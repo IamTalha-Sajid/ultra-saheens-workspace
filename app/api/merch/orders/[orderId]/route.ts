@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUserId } from "@/lib/auth-api";
+import { requireRole } from "@/lib/auth-api";
 import { getShopDb } from "@/lib/shopDb";
 import { sendEmail } from "@/lib/email";
 
@@ -93,10 +93,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { error } = await requireRole("admin", "member");
+  if (error) return error;
 
   const { orderId } = await params;
   const body = await req.json() as { status?: string };
