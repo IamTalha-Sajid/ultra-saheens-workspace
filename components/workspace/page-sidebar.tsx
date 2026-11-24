@@ -25,6 +25,7 @@ const ICONS = {
   files: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></>,
   links: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>,
   merch: <><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></>,
+  welcome: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></>,
   members: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
 };
 
@@ -248,6 +249,9 @@ export function PageSidebar({
       </button>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto" aria-label="Pages">
+        <div className="mb-5">
+          <NavItem href="/app/welcome" label="Start here" icon="welcome" active={pathname === "/app/welcome"} onClick={onClose} />
+        </div>
         <p className="eyebrow mb-1 px-3 text-[var(--text-faint)]">Executive</p>
         <div className="mb-5 flex flex-col gap-0.5">
           <NavItem href="/app/board" label="Executive Board" icon="board" active={pathname === "/app/board"} onClick={onClose} />
