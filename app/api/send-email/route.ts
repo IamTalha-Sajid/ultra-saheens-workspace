@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       subject,
       text: body,
       html: `<div style="font-family: sans-serif; padding: 20px; color: #333;">
-              <h2 style="color: #8b5cf6;">Ultra Shaheens</h2>
+              <h2 style="color: #286411;">Ultra Shaheens</h2>
               <p>${body}</p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
               <p style="font-size: 12px; color: #666;">Sent from Ultra Shaheens Workspace</p>

@@ -19,12 +19,12 @@ type Member = {
 };
 
 const AVATAR_COLORS = [
-    "from-violet-500 to-fuchsia-600",
-    "from-cyan-500 to-blue-600",
-    "from-amber-500 to-orange-600",
-    "from-rose-500 to-pink-600",
-    "from-emerald-500 to-teal-600",
-    "from-indigo-500 to-purple-600",
+    "bg-violet-400/20 text-violet-400",
+    "bg-info/20 text-info",
+    "bg-warn/20 text-warn",
+    "bg-danger/20 text-danger",
+    "bg-ok/20 text-ok",
+    "bg-asparagus/20 text-asparagus",
 ];
 
 function avatarGradient(name: string): string {
@@ -66,9 +66,9 @@ export default function MembersPage() {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <header className="glass-panel mx-4 mt-3 flex shrink-0 flex-col gap-1 rounded-xl px-5 py-4 md:mx-6">
                 <div className="flex items-center gap-2">
-                    <span className="glass-pill text-amber-400">Workspace</span>
+                    <span className="glass-pill text-warn">Workspace</span>
                 </div>
-                <h1 className="text-base font-semibold tracking-tight text-white md:text-lg">
+                <h1 className="text-base font-semibold tracking-tight text-[var(--text-primary)] md:text-lg">
                     Workspace Members
                 </h1>
                 <p className="text-xs text-[var(--text-muted)]">
@@ -89,15 +89,15 @@ export default function MembersPage() {
                         const gradient = avatarGradient(displayName);
 
                         return (
-                            <div key={member._id} className="glass-card group flex flex-col gap-5 rounded-[1.5rem] border border-white/[0.06] bg-white/[0.02] p-6 transition-all hover:bg-white/[0.04] hover:shadow-2xl">
+                            <div key={member._id} className="glass-card group flex flex-col gap-5 rounded border border-white/[0.06] bg-white/[0.02] p-6 transition-all hover:bg-white/[0.04] hover:shadow-2xl">
                                 <div className="flex items-center gap-4">
-                                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} text-lg font-bold text-white shadow-lg ring-1 ring-white/20`}>
+                                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${gradient} text-lg font-bold ring-1 ring-white/15`}>
                                         {displayName.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="min-w-0">
-                                        <h3 className="truncate font-semibold text-white">{displayName}</h3>
+                                        <h3 className="truncate font-semibold text-[var(--text-primary)]">{displayName}</h3>
                                         {member.designation && (
-                                            <p className="truncate text-[10px] font-bold uppercase tracking-tight text-amber-500/80">{member.designation}</p>
+                                            <p className="truncate text-[11px] font-bold uppercase tracking-tight text-warn/80">{member.designation}</p>
                                         )}
                                         {member.email && <p className="truncate text-xs text-[var(--text-muted)]">{member.email}</p>}
                                     </div>
@@ -105,19 +105,19 @@ export default function MembersPage() {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-center">
-                                        <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Assigned</p>
-                                        <p className="mt-1 text-lg font-bold text-white">{member.stats.assigned}</p>
+                                        <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Assigned</p>
+                                        <p className="mt-1 text-lg font-bold text-[var(--text-primary)]">{member.stats.assigned}</p>
                                     </div>
                                     <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-center">
-                                        <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Completed</p>
-                                        <p className="mt-1 text-lg font-bold text-emerald-400">{member.stats.completed}</p>
+                                        <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Completed</p>
+                                        <p className="mt-1 text-lg font-bold text-ok">{member.stats.completed}</p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between border-t border-white/5 pt-4">
-                                    <span className="text-[10px] text-[var(--text-muted)]">Joined {new Date(member.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
+                                    <span className="text-[11px] text-[var(--text-muted)]">Joined {new Date(member.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
                                     {member.username && (
-                                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-white/50 ring-1 ring-white/10">
+                                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-[var(--text-faint)] ring-1 ring-white/10">
                                             @{member.username}
                                         </span>
                                     )}

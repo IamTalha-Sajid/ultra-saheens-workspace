@@ -107,7 +107,7 @@ export function TitleMentionInput({
                 className={className}
             />
             {query !== null && matches.length > 0 && (
-                <div className="absolute left-0 top-full z-50 mt-1 max-h-56 w-64 overflow-y-auto rounded-xl border border-[var(--glass-border-bright)] bg-[rgba(20,20,22,0.97)] py-1 shadow-2xl backdrop-blur-xl">
+                <div className="absolute left-0 top-full z-50 mt-1 max-h-56 w-64 overflow-y-auto rounded-xl border border-[var(--glass-border-bright)] bg-[rgba(20,20,22,0.97)] py-1 shadow-2xl ">
                     {matches.map((u, i) => (
                         <button
                             key={u._id}
@@ -115,11 +115,11 @@ export function TitleMentionInput({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => selectMention(u)}
                             className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm transition-colors ${i === selectedIndex
-                                ? "bg-[var(--accent-glow)] text-white"
-                                : "text-[var(--text-muted)] hover:bg-white/[0.07] hover:text-white"
+                                ? "bg-[var(--accent-glow)] text-[var(--text-primary)]"
+                                : "text-[var(--text-muted)] hover:bg-white/[0.07] hover:text-[var(--text-primary)]"
                                 }`}
                         >
-                            <span className="font-semibold text-white">{mentionLabel(u)}</span>
+                            <span className="font-semibold text-[var(--text-primary)]">{mentionLabel(u)}</span>
                             {u.name.trim() && <span className="text-xs text-[var(--text-muted)]">{u.name}</span>}
                         </button>
                     ))}

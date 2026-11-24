@@ -142,11 +142,11 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role="status"
-            className={`pointer-events-auto glass-card glass-card-elevated rounded-2xl border px-4 py-3 text-sm text-white shadow-xl backdrop-blur-xl ${t.variant === "success"
-                ? "border-[var(--glass-border-bright)] bg-emerald-500/15"
+            className={`pointer-events-auto glass-card glass-card-elevated rounded-2xl border px-4 py-3 text-sm text-[var(--text-primary)] shadow-xl  ${t.variant === "success"
+                ? "border-ok/40 bg-[var(--surface-overlay)]"
                 : t.variant === "error"
-                  ? "border-red-400/35 bg-red-950/40"
-                  : "border-[var(--glass-border)] bg-[rgba(20,20,22,0.85)]"
+                  ? "border-danger/50 bg-[var(--surface-overlay)]"
+                  : "border-[var(--glass-border)] bg-[var(--surface-overlay)]"
               }`}
           >
             {t.message}
@@ -156,7 +156,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
       {dialog ? (
         <div
-          className="fixed inset-0 z-[290] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-[290] flex items-center justify-center bg-black/60 p-4 "
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) {
@@ -183,7 +183,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
               <>
                 <h2
                   id={titleId}
-                  className="text-lg font-semibold text-white"
+                  className="text-lg font-semibold text-[var(--text-primary)]"
                 >
                   {dialog.title}
                 </h2>
@@ -206,7 +206,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
                     type="button"
                     className={
                       dialog.destructive
-                        ? "rounded-xl border border-red-400/35 bg-gradient-to-b from-red-950/65 to-red-950/45 px-4 py-2 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset] backdrop-blur-md transition-all hover:border-red-400/50 hover:brightness-110"
+                        ? "glass-button-danger px-4 py-2 text-sm"
                         : "glass-button-accent px-4 py-2 text-sm"
                     }
                     onClick={() => closeConfirm(true)}
@@ -219,7 +219,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
               <>
                 <h2
                   id={titleId}
-                  className="text-lg font-semibold text-white"
+                  className="text-lg font-semibold text-[var(--text-primary)]"
                 >
                   {dialog.title}
                 </h2>

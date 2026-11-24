@@ -178,14 +178,14 @@ export function NotificationPanel() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="relative rounded-xl border border-white/[0.08] bg-white/[0.04] p-2 text-[var(--text-muted)] shadow-[0_1px_2px_rgba(0,0,0,0.2)] backdrop-blur-md transition-all hover:border-white/12 hover:bg-white/[0.08] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          className="relative rounded-xl border border-white/[0.08] bg-white/[0.04] p-2 text-[var(--text-muted)] shadow-[0_1px_2px_rgba(0,0,0,0.2)]  transition-all hover:border-white/12 hover:bg-white/[0.08] hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           aria-expanded={open}
           aria-haspopup="dialog"
           aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
         >
           <BellIcon className="h-5 w-5" />
           {unreadCount > 0 ? (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold text-white shadow-[0_0_8px_var(--accent-glow)]">
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[11px] font-bold text-[var(--on-accent)]">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           ) : null}
@@ -210,14 +210,14 @@ export function NotificationPanel() {
               width: POPOVER_W,
               maxHeight: "min(72vh, 520px)",
             }}
-            className="notification-popover fixed z-[150] flex flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[rgba(20,20,22,0.95)] shadow-2xl backdrop-blur-xl"
+            className="notification-popover fixed z-[150] flex flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[var(--surface-overlay)] shadow-2xl"
           >
             <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] bg-black/20 px-4 py-3">
               <div className="flex items-center gap-2">
-                <span className="glass-pill py-0.5 text-[10px] text-[var(--text-muted)]">
+                <span className="glass-pill py-0.5 text-[11px] text-[var(--text-muted)]">
                   Inbox
                 </span>
-                <h2 className="text-sm font-semibold text-white">Notifications</h2>
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Notifications</h2>
               </div>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 ? (
@@ -235,7 +235,7 @@ export function NotificationPanel() {
                     e.stopPropagation();
                     setOpen(false);
                   }}
-                  className="rounded-lg p-1.5 text-[var(--text-muted)] transition-colors hover:bg-white/10 hover:text-white"
+                  className="rounded-lg p-1.5 text-[var(--text-muted)] transition-colors hover:bg-white/10 hover:text-[var(--text-primary)]"
                   aria-label="Close"
                 >
                   ×
@@ -256,11 +256,11 @@ export function NotificationPanel() {
                   {items.map((n) => (
                     <li key={n.id}>
                       <div
-                        className={`w-full rounded-xl border px-3.5 py-3 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset] backdrop-blur-xl transition-all cursor-pointer ${n.read
+                        className={`w-full rounded-xl border px-3.5 py-3 text-left shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset]  transition-all cursor-pointer ${n.read
                           ? "border-white/[0.1] bg-[rgba(255,255,255,0.04)] opacity-70"
                           : n.type === "ticket_assigned"
-                            ? "border-violet-500/40 bg-violet-500/[0.12] shadow-[0_0_12px_rgba(139,92,246,0.15)]"
-                            : "border-emerald-500/40 bg-emerald-500/[0.12] shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                            ? "border-violet-500/40 bg-violet-500/[0.12] "
+                            : "border-ok/40 bg-ok/[0.12] shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                           }`}
                         onClick={async () => {
                           if ((n.type === "ticket_assigned" || n.type === "ticket_comment") && n.ticketId) {
@@ -277,14 +277,14 @@ export function NotificationPanel() {
                               {!n.read && (
                                 <span className={`h-2 w-2 rounded-full ${n.type === "ticket_assigned"
                                   ? "bg-violet-400 shadow-[0_0_6px_rgb(167,139,250)]"
-                                  : "bg-emerald-400 shadow-[0_0_6px_rgb(52,211,153)]"
+                                  : "bg-ok shadow-[0_0_6px_rgb(52,211,153)]"
                                   }`} aria-label="Unread" />
                               )}
-                              <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${n.type === "ticket_assigned"
+                              <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${n.type === "ticket_assigned"
                                 ? "bg-violet-500/20 text-violet-300"
                                 : n.type === "ticket_comment"
-                                  ? "bg-indigo-500/20 text-indigo-300"
-                                  : "bg-emerald-500/20 text-emerald-300"
+                                  ? "bg-violet-400/15 text-violet-400"
+                                  : "bg-ok/20 text-ok"
                                 }`}>
                                 {n.type === "ticket_assigned" ? "Task" : n.type === "ticket_comment" ? "Comment" : "Mention"}
                               </span>
@@ -293,15 +293,15 @@ export function NotificationPanel() {
                               </p>
                             </div>
                             {n.type === "ticket_assigned" ? (
-                              <p className="text-sm text-white">
+                              <p className="text-sm text-[var(--text-primary)]">
                                 <span className="font-medium text-violet-300">
                                   {n.actorName.trim() || "Someone"}
                                 </span>{" "}
                                 {n.mentionLabel}
                               </p>
                             ) : (
-                              <p className="text-sm text-white">
-                                <span className="font-medium text-emerald-300">
+                              <p className="text-sm text-[var(--text-primary)]">
+                                <span className="font-medium text-ok">
                                   {n.actorName.trim() || "Someone"}
                                 </span>{" "}
                                 {n.type === "ticket_comment" ? "mentioned you in a comment on " : "mentioned you in "}
@@ -327,7 +327,7 @@ export function NotificationPanel() {
                             }}
                             title={n.read ? "Mark as unread" : "Mark as read"}
                             aria-label={n.read ? "Mark as unread" : "Mark as read"}
-                            className="rounded-md p-1 text-[var(--xanadu)] hover:text-white transition-colors focus:outline-none"
+                            className="rounded-md p-1 text-[var(--xanadu)] hover:text-[var(--text-primary)] transition-colors focus:outline-none"
                           >
                             {n.read ? (
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">

@@ -32,18 +32,18 @@ type Ticket = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-    Highest: "text-rose-400",
+    Highest: "text-danger",
     High: "text-orange-400",
-    Medium: "text-amber-400",
-    Low: "text-sky-400",
-    Lowest: "text-white/40",
+    Medium: "text-warn",
+    Low: "text-info",
+    Lowest: "text-[var(--text-faint)]",
 };
 
 const TYPE_COLORS: Record<string, string> = {
-    Task: "bg-sky-500/20 text-sky-300 border-sky-500/30",
-    Bug: "bg-rose-500/20 text-rose-300 border-rose-500/30",
-    Story: "bg-violet-500/20 text-violet-300 border-violet-500/30",
-    Epic: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30",
+    Task: "bg-neutral/15 text-neutral border-neutral/30",
+    Bug: "bg-danger/15 text-danger border-danger/30",
+    Story: "bg-violet-400/15 text-violet-400 border-violet-400/30",
+    Epic: "bg-asparagus/15 text-asparagus border-asparagus/30",
 };
 
 const COLUMNS: Array<Ticket["status"]> = ["Todo", "In progress", "Done", "Blocked"];
@@ -62,51 +62,51 @@ const COL_THEME: Record<
     }
 > = {
     Todo: {
-        dot: "bg-indigo-400",
-        badge: "bg-indigo-500/15 text-indigo-300",
-        border: "border-indigo-500/20",
-        headerBg: "bg-indigo-500/[0.06]",
-        cardAccent: "border-l-indigo-400",
-        addBorder: "border-indigo-500/30 hover:border-indigo-400/50",
-        addBg: "hover:bg-indigo-500/[0.04]",
+        dot: "bg-neutral",
+        badge: "bg-neutral/15 text-neutral",
+        border: "border-neutral/20",
+        headerBg: "bg-neutral/[0.06]",
+        cardAccent: "border-l-neutral",
+        addBorder: "border-neutral/30 hover:border-neutral/50",
+        addBg: "hover:bg-neutral/[0.04]",
     },
     "In progress": {
-        dot: "bg-amber-400",
-        badge: "bg-amber-500/15 text-amber-300",
-        border: "border-amber-500/20",
-        headerBg: "bg-amber-500/[0.06]",
-        cardAccent: "border-l-amber-400",
-        addBorder: "border-amber-500/30 hover:border-amber-400/50",
-        addBg: "hover:bg-amber-500/[0.04]",
+        dot: "bg-warn",
+        badge: "bg-warn/15 text-warn",
+        border: "border-warn/20",
+        headerBg: "bg-warn/[0.06]",
+        cardAccent: "border-l-warn",
+        addBorder: "border-warn/30 hover:border-warn/50",
+        addBg: "hover:bg-warn/[0.04]",
     },
     Done: {
-        dot: "bg-emerald-400",
-        badge: "bg-emerald-500/15 text-emerald-300",
-        border: "border-emerald-500/20",
-        headerBg: "bg-emerald-500/[0.06]",
-        cardAccent: "border-l-emerald-400",
-        addBorder: "border-emerald-500/30 hover:border-emerald-400/50",
-        addBg: "hover:bg-emerald-500/[0.04]",
+        dot: "bg-ok",
+        badge: "bg-ok/15 text-ok",
+        border: "border-ok/20",
+        headerBg: "bg-ok/[0.06]",
+        cardAccent: "border-l-ok",
+        addBorder: "border-ok/30 hover:border-ok/50",
+        addBg: "hover:bg-ok/[0.04]",
     },
     Blocked: {
-        dot: "bg-rose-400",
-        badge: "bg-rose-500/15 text-rose-300",
-        border: "border-rose-500/20",
-        headerBg: "bg-rose-500/[0.06]",
-        cardAccent: "border-l-rose-400",
-        addBorder: "border-rose-500/30 hover:border-rose-400/50",
-        addBg: "hover:bg-rose-500/[0.04]",
+        dot: "bg-danger",
+        badge: "bg-danger/15 text-danger",
+        border: "border-danger/20",
+        headerBg: "bg-danger/[0.06]",
+        cardAccent: "border-l-danger",
+        addBorder: "border-danger/30 hover:border-danger/50",
+        addBg: "hover:bg-danger/[0.04]",
     },
 };
 
 /* ── Avatar color ring ── */
 const AVATAR_COLORS = [
-    "from-violet-500 to-fuchsia-600",
-    "from-cyan-500 to-blue-600",
-    "from-amber-500 to-orange-600",
-    "from-rose-500 to-pink-600",
-    "from-emerald-500 to-teal-600",
-    "from-indigo-500 to-purple-600",
+    "bg-violet-400/20 text-violet-400",
+    "bg-info/20 text-info",
+    "bg-warn/20 text-warn",
+    "bg-danger/20 text-danger",
+    "bg-ok/20 text-ok",
+    "bg-asparagus/20 text-asparagus",
 ];
 
 function avatarGradient(name: string): string {
@@ -133,15 +133,15 @@ function getDeadlineStatus(estimate?: string): "overdue" | "soon" | "ok" | null 
 }
 
 const DEADLINE_BADGE_COLORS: Record<"overdue" | "soon" | "ok", string> = {
-    overdue: "border-rose-500/20 bg-rose-500/10 text-rose-400 hover:border-rose-400/50 hover:bg-rose-500/20",
-    soon: "border-amber-500/20 bg-amber-500/10 text-amber-400 hover:border-amber-400/50 hover:bg-amber-500/20",
-    ok: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:border-emerald-400/50 hover:bg-emerald-500/20",
+    overdue: "border-danger/20 bg-danger/10 text-danger hover:border-danger/50 hover:bg-danger/20",
+    soon: "border-warn/20 bg-warn/10 text-warn hover:border-warn/50 hover:bg-warn/20",
+    ok: "border-ok/20 bg-ok/10 text-ok hover:border-ok/50 hover:bg-ok/20",
 };
 
 const DEADLINE_TEXT_COLORS: Record<"overdue" | "soon" | "ok", string> = {
-    overdue: "text-rose-400 hover:text-rose-300",
-    soon: "text-amber-400 hover:text-amber-300",
-    ok: "text-emerald-400 hover:text-emerald-300",
+    overdue: "text-danger hover:text-danger",
+    soon: "text-warn hover:text-warn",
+    ok: "text-ok hover:text-ok",
 };
 
 const BOARD_FILTER_KEY = "kanban_board_filters";
@@ -487,8 +487,8 @@ export function KanbanBoard() {
                         }}
                         className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
                             activeFiltersCount > 0
-                                ? "border-violet-500/40 bg-violet-500/15 text-white shadow-[0_0_12px_rgba(139,92,246,0.15)]"
-                                : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.06] hover:text-white"
+                                ? "border-violet-500/40 bg-violet-500/15 text-[var(--text-primary)] "
+                                : "border-white/10 bg-white/[0.03] text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
                         }`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
@@ -496,7 +496,7 @@ export function KanbanBoard() {
                         </svg>
                         Filter
                         {activeFiltersCount > 0 && (
-                            <span className="rounded-full bg-violet-400/25 px-1.5 py-0.5 text-[10px] font-bold text-violet-200">{activeFiltersCount}</span>
+                            <span className="rounded-full bg-violet-400/25 px-1.5 py-0.5 text-[11px] font-bold text-violet-200">{activeFiltersCount}</span>
                         )}
                     </button>
 
@@ -504,7 +504,7 @@ export function KanbanBoard() {
                         <button
                             type="button"
                             onClick={clearAllFilters}
-                            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white"
+                            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
                         >
                             Clear Filters
                         </button>
@@ -514,13 +514,13 @@ export function KanbanBoard() {
                         <>
                             <div className="fixed inset-0 z-[450]" onClick={() => setIsFilterMenuOpen(false)} />
                             <div
-                                className="fixed z-[500] w-[320px] rounded-2xl border border-white/[0.12] bg-[var(--surface-overlay)] p-2.5 shadow-[0_24px_70px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                                className="fixed z-[500] w-[320px] rounded-2xl border border-white/[0.12] bg-[var(--surface-overlay)] p-2.5 shadow-[0_24px_70px_rgba(0,0,0,0.45)] "
                                 style={{ top: filterMenuPos.top, left: filterMenuPos.left }}
                             >
                                 {!activeFilterType ? (
                                     <div className="space-y-1.5">
-                                        <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white/35">Choose Filter</p>
-                                        <button type="button" onClick={() => setActiveFilterType("assignee")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-white/80 transition-all hover:border-violet-400/30 hover:bg-violet-500/10 hover:text-white">
+                                        <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-faint)]">Choose Filter</p>
+                                        <button type="button" onClick={() => setActiveFilterType("assignee")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-[var(--text-primary)] transition-all hover:border-violet-400/30 hover:bg-violet-500/10 hover:text-[var(--text-primary)]">
                                             <span className="flex items-center gap-2">
                                                 <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-500/20 text-violet-300">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
@@ -532,11 +532,11 @@ export function KanbanBoard() {
                                                 </span>
                                                 By assignee
                                             </span>
-                                            <span className="text-white/40 transition-transform group-hover:translate-x-0.5">›</span>
+                                            <span className="text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5">›</span>
                                         </button>
-                                        <button type="button" onClick={() => setActiveFilterType("status")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-white/80 transition-all hover:border-indigo-400/30 hover:bg-indigo-500/10 hover:text-white">
+                                        <button type="button" onClick={() => setActiveFilterType("status")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-[var(--text-primary)] transition-all hover:border-violet-400/30 hover:bg-violet-500/10 hover:text-[var(--text-primary)]">
                                             <span className="flex items-center gap-2">
-                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-violet-500/20 text-violet-300">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
                                                         <path d="M2 20h.01" />
                                                         <path d="M7 20v-4" />
@@ -547,11 +547,11 @@ export function KanbanBoard() {
                                                 </span>
                                                 By status
                                             </span>
-                                            <span className="text-white/40 transition-transform group-hover:translate-x-0.5">›</span>
+                                            <span className="text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5">›</span>
                                         </button>
-                                        <button type="button" onClick={() => setActiveFilterType("dueDate")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-white/80 transition-all hover:border-amber-400/30 hover:bg-amber-500/10 hover:text-white">
+                                        <button type="button" onClick={() => setActiveFilterType("dueDate")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-[var(--text-primary)] transition-all hover:border-warn/30 hover:bg-warn/10 hover:text-[var(--text-primary)]">
                                             <span className="flex items-center gap-2">
-                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/20 text-amber-300">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-warn/20 text-warn">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
                                                         <circle cx="12" cy="12" r="10" />
                                                         <polyline points="12 6 12 12 16 14" />
@@ -559,11 +559,11 @@ export function KanbanBoard() {
                                                 </span>
                                                 By due date
                                             </span>
-                                            <span className="text-white/40 transition-transform group-hover:translate-x-0.5">›</span>
+                                            <span className="text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5">›</span>
                                         </button>
-                                        <button type="button" onClick={() => setActiveFilterType("pastDue")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-white/80 transition-all hover:border-rose-400/30 hover:bg-rose-500/10 hover:text-white">
+                                        <button type="button" onClick={() => setActiveFilterType("pastDue")} className="group flex w-full items-center justify-between rounded-xl border border-transparent bg-white/[0.02] px-3 py-2.5 text-left text-sm text-[var(--text-primary)] transition-all hover:border-danger/30 hover:bg-danger/10 hover:text-[var(--text-primary)]">
                                             <span className="flex items-center gap-2">
-                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-rose-500/20 text-rose-300">
+                                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-danger/20 text-danger">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
                                                         <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                                                         <line x1="4" x2="4" y1="22" y2="15" />
@@ -571,12 +571,12 @@ export function KanbanBoard() {
                                                 </span>
                                                 By past due
                                             </span>
-                                            <span className="text-white/40 transition-transform group-hover:translate-x-0.5">›</span>
+                                            <span className="text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5">›</span>
                                         </button>
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
-                                        <button type="button" onClick={() => setActiveFilterType(null)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white">← Back</button>
+                                        <button type="button" onClick={() => setActiveFilterType(null)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--text-faint)] transition-colors hover:bg-white/[0.05] hover:text-[var(--text-primary)]">← Back</button>
                                         {activeFilterType === "assignee" && (
                                             <div className="max-h-60 space-y-1 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.015] p-1">
                                                 {users.map((u) => {
@@ -587,7 +587,7 @@ export function KanbanBoard() {
                                                             key={u._id}
                                                             type="button"
                                                             onClick={() => toggleAssigneeFilter(u._id)}
-                                                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${active ? "bg-violet-500/20 text-white ring-1 ring-violet-400/30" : "text-white/75 hover:bg-white/[0.06] hover:text-white"}`}
+                                                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${active ? "bg-violet-500/20 text-[var(--text-primary)] ring-1 ring-violet-400/30" : "text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}
                                                         >
                                                             <span className={`h-2 w-2 rounded-full ${active ? "bg-violet-300" : "bg-white/25"}`} />
                                                             <span className="truncate">{displayName}</span>
@@ -605,7 +605,7 @@ export function KanbanBoard() {
                                                             key={col}
                                                             type="button"
                                                             onClick={() => toggleStatusFilter(col)}
-                                                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${active ? "bg-violet-500/20 text-white ring-1 ring-violet-400/30" : "text-white/75 hover:bg-white/[0.06] hover:text-white"}`}
+                                                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${active ? "bg-violet-500/20 text-[var(--text-primary)] ring-1 ring-violet-400/30" : "text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}
                                                         >
                                                             <span className={`h-2 w-2 rounded-full ${COL_THEME[col]?.dot}`} />
                                                             {col}
@@ -616,7 +616,7 @@ export function KanbanBoard() {
                                         )}
                                         {activeFilterType === "dueDate" && (
                                             <div className="space-y-2 px-2 pb-1">
-                                                <label className="text-[11px] font-semibold uppercase tracking-wider text-white/35">Due date</label>
+                                                <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-faint)]">Due date</label>
                                                 <input
                                                     type="date"
                                                     value={filterDueDate}
@@ -624,7 +624,7 @@ export function KanbanBoard() {
                                                     className="glass-input w-full py-2 text-sm [color-scheme:dark]"
                                                 />
                                                 {filterDueDate && (
-                                                    <button type="button" onClick={() => setFilterDueDate("")} className="text-xs text-white/60 hover:text-white">Clear due date filter</button>
+                                                    <button type="button" onClick={() => setFilterDueDate("")} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">Clear due date filter</button>
                                                 )}
                                             </div>
                                         )}
@@ -633,7 +633,7 @@ export function KanbanBoard() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setFilterPastDue((v) => !v)}
-                                                    className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors ${filterPastDue ? "border-rose-500/40 bg-rose-500/15 text-rose-200" : "border-white/10 text-white/75 hover:bg-white/[0.06] hover:text-white"}`}
+                                                    className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors ${filterPastDue ? "border-danger/40 bg-danger/15 text-danger" : "border-white/10 text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}
                                                 >
                                                     {filterPastDue ? "Past due only: ON" : "Past due only: OFF"}
                                                 </button>
@@ -649,22 +649,22 @@ export function KanbanBoard() {
                 {activeFiltersCount > 0 && (
                     <div className="flex items-center gap-2">
                         {selectedAssigneeNames.length > 0 && (
-                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/75">
+                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-[var(--text-muted)]">
                                 Assignee: {selectedAssigneeNames.join(", ")}
                             </span>
                         )}
                         {filterStatuses.length > 0 && (
-                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/75">
+                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-[var(--text-muted)]">
                                 Status: {filterStatuses.join(", ")}
                             </span>
                         )}
                         {filterDueDate && (
-                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/75">
+                            <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-[var(--text-muted)]">
                                 Due: {filterDueDate}
                             </span>
                         )}
                         {filterPastDue && (
-                            <span className="rounded-md border border-rose-500/25 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200">
+                            <span className="rounded-md border border-danger/25 bg-danger/10 px-2 py-1 text-[11px] text-danger">
                                 Past due
                             </span>
                         )}
@@ -672,12 +672,12 @@ export function KanbanBoard() {
                 )}
 
                 <div className="ml-auto flex items-center gap-3">
-                    <div className="flex items-center rounded-lg border border-white/10 bg-[var(--surface-overlay)] p-1 backdrop-blur-md">
+                    <div className="flex items-center rounded-lg border border-white/10 bg-[var(--surface-overlay)] p-1 ">
                         <button
                             type="button"
                             onClick={() => setViewMode("kanban")}
                             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all ${
-                                viewMode === "kanban" ? "bg-white/10 text-white shadow-md shadow-black/20" : "text-white/40 hover:text-white"
+                                viewMode === "kanban" ? "bg-white/10 text-[var(--text-primary)] shadow-md shadow-black/20" : "text-[var(--text-faint)] hover:text-[var(--text-primary)]"
                             }`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
@@ -687,7 +687,7 @@ export function KanbanBoard() {
                             type="button"
                             onClick={() => setViewMode("table")}
                             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all ${
-                                viewMode === "table" ? "bg-white/10 text-white shadow-md shadow-black/20" : "text-white/40 hover:text-white"
+                                viewMode === "table" ? "bg-white/10 text-[var(--text-primary)] shadow-md shadow-black/20" : "text-[var(--text-faint)] hover:text-[var(--text-primary)]"
                             }`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
@@ -701,8 +701,8 @@ export function KanbanBoard() {
                         type="button"
                         onClick={() => setShowArchived(!showArchived)}
                         className={`flex items-center gap-2 rounded-lg border px-4 py-1.5 text-[12px] font-semibold transition-all ${showArchived
-                            ? "border-amber-500/40 bg-amber-500/15 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.15)]"
-                            : "border-white/8 bg-white/[0.03] text-white/50 hover:bg-white/[0.06] hover:text-white"
+                            ? "border-warn/40 bg-warn/15 text-warn "
+                            : "border-white/8 bg-white/[0.03] text-[var(--text-faint)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"
                             }`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
@@ -729,7 +729,7 @@ export function KanbanBoard() {
                                 <div className={`mb-3 flex items-center justify-between rounded-xl px-3 py-2 ${theme.headerBg}`}>
                                     <div className="flex items-center gap-2">
                                         <span className={`h-2.5 w-2.5 rounded-full ${theme.dot}`} />
-                                        <h2 className="text-sm font-semibold text-white">{col}</h2>
+                                        <h2 className="text-sm font-semibold text-[var(--text-primary)]">{col}</h2>
                                     </div>
                                     <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${theme.badge}`}>
                                         {colTickets.length}
@@ -759,7 +759,7 @@ export function KanbanBoard() {
                                                 <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); archiveTicket(t._id, !showArchived); }}
-                                                        className={`rounded-md p-1 transition-colors hover:bg-white/10 ${showArchived ? "text-amber-400" : "text-white/40 hover:text-white"}`}
+                                                        className={`rounded-md p-1 transition-colors hover:bg-white/10 ${showArchived ? "text-warn" : "text-[var(--text-faint)] hover:text-[var(--text-primary)]"}`}
                                                         title={showArchived ? "Unarchive" : "Archive"}
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
@@ -768,7 +768,7 @@ export function KanbanBoard() {
                                                     </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); deleteTicket(t._id); }}
-                                                        className="rounded-md p-1 text-rose-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
+                                                        className="rounded-md p-1 text-danger transition-colors hover:bg-danger/10 hover:text-danger"
                                                         title="Delete"
                                                     >
                                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
@@ -779,11 +779,11 @@ export function KanbanBoard() {
                                                 <div className="mb-1 flex items-center gap-1.5">
                                                     <span className="text-xs font-bold tracking-wider text-violet-400">US-{t.sid}</span>
                                                 </div>
-                                                <p className="pr-4 text-sm font-medium leading-snug text-white/90">{t.title}</p>
+                                                <p className="pr-4 text-sm font-medium leading-snug text-[var(--text-primary)]">{t.title}</p>
 
                                                 <div className="mt-3 flex items-center justify-between gap-2">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <span className="text-[10px] text-white/30" title="Created at">
+                                                        <span className="text-[11px] text-[var(--text-faint)]" title="Created at">
                                                             {new Date(t.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                                                         </span>
                                                         <button
@@ -793,12 +793,12 @@ export function KanbanBoard() {
                                                             className="flex items-center"
                                                         >
                                                             {t.estimate ? (
-                                                                <span className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-bold shadow-sm transition-colors ${DEADLINE_BADGE_COLORS[getDeadlineStatus(t.estimate) ?? "ok"]}`}>
+                                                                <span className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-bold shadow-sm transition-colors ${DEADLINE_BADGE_COLORS[getDeadlineStatus(t.estimate) ?? "ok"]}`}>
                                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                                     {new Date(t.estimate.split('T')[0] + 'T12:00:00').toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                                                                 </span>
                                                             ) : (
-                                                                <span className="flex items-center gap-0.5 rounded-md border border-dashed border-white/10 px-1.5 py-0.5 text-[10px] text-white/25 opacity-0 transition-opacity group-hover:opacity-100 hover:border-violet-400/30 hover:text-violet-400">
+                                                                <span className="flex items-center gap-0.5 rounded-md border border-dashed border-white/10 px-1.5 py-0.5 text-[11px] text-[var(--text-faint)] opacity-0 transition-opacity group-hover:opacity-100 hover:border-violet-400/30 hover:text-violet-400">
                                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                                                     Due
                                                                 </span>
@@ -807,15 +807,15 @@ export function KanbanBoard() {
                                                     </div>
                                                     {assigneeName ? (
                                                         <div className="flex items-center gap-1.5" title={assigneeName}>
-                                                            <span className={`flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(assigneeName)} text-[10px] font-bold text-white ring-1 ring-white/20`}>
+                                                            <span className={`flex h-6 w-6 items-center justify-center rounded-full ${avatarGradient(assigneeName)} text-[11px] font-bold ring-1 ring-white/15`}>
                                                                 {assigneeName.charAt(0).toUpperCase()}
                                                             </span>
-                                                            <span className="max-w-[80px] truncate text-[10px] font-medium text-white/50">
+                                                            <span className="max-w-[80px] truncate text-[11px] font-medium text-[var(--text-faint)]">
                                                                 {assignees.length > 1 ? `${assigneeName} +${assignees.length - 1}` : assigneeName}
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <span className="flex items-center gap-1 rounded-md border border-dashed border-white/10 px-1.5 py-0.5 text-[10px] text-white/25">
+                                                        <span className="flex items-center gap-1 rounded-md border border-dashed border-white/10 px-1.5 py-0.5 text-[11px] text-[var(--text-faint)]">
                                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
                                                                 <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                                                             </svg>
@@ -837,20 +837,20 @@ export function KanbanBoard() {
                                                 onEscape={() => { setIsAdding(null); setPendingMentionIds([]); }}
                                                 onBlur={() => { if (!newTitle) { setIsAdding(null); setPendingMentionIds([]); } }}
                                                 placeholder="Task title... (@ to mention)"
-                                                className="w-full bg-transparent text-sm text-white placeholder-white/30 outline-none"
+                                                className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder-white/30 outline-none"
                                                 users={users}
                                                 onMention={(u) => setPendingMentionIds((prev) => Array.from(new Set([...prev, u._id])))}
                                             />
                                             <div className="mt-2 flex gap-2">
                                                 <button
                                                     onClick={() => void handleCreate(col)}
-                                                    className="rounded-lg bg-violet-600 px-3 py-1 text-xs font-semibold text-white hover:bg-violet-500"
+                                                    className="rounded-lg bg-violet-600 px-3 py-1 text-xs font-semibold text-[var(--text-primary)] hover:bg-violet-500"
                                                 >
                                                     Add
                                                 </button>
                                                 <button
                                                     onClick={() => { setIsAdding(null); setPendingMentionIds([]); }}
-                                                    className="px-2 py-1 text-xs text-white/40 hover:text-white"
+                                                    className="px-2 py-1 text-xs text-[var(--text-faint)] hover:text-[var(--text-primary)]"
                                                 >
                                                     Cancel
                                                 </button>
@@ -859,7 +859,7 @@ export function KanbanBoard() {
                                     ) : (
                                         <button
                                             onClick={() => setIsAdding(col)}
-                                            className={`mt-1 flex w-full items-center justify-center rounded-lg border border-dashed py-2 text-xs text-white/30 transition-colors ${theme.addBorder} ${theme.addBg}`}
+                                            className={`mt-1 flex w-full items-center justify-center rounded-lg border border-dashed py-2 text-xs text-[var(--text-faint)] transition-colors ${theme.addBorder} ${theme.addBg}`}
                                         >
                                             + Add card
                                         </button>
@@ -871,51 +871,51 @@ export function KanbanBoard() {
                 </div>
             ) : (
                 <div className="flex-1 overflow-x-auto overflow-y-auto rounded-2xl border border-white/[0.06] bg-[var(--surface-mid)] relative">
-                    <table className="w-full text-left text-sm text-white/90 whitespace-nowrap">
+                    <table className="w-full text-left text-sm text-[var(--text-primary)] whitespace-nowrap">
                         <thead className="sticky top-0 z-20 bg-[var(--surface-mid)] shadow-sm border-b border-white/10">
-                            <tr className="text-[11px] font-bold uppercase tracking-wider text-white/40">
-                                <th onClick={(e) => openColumnFilter("sid", e)} className="py-3.5 pl-5 pr-2 font-semibold w-20 cursor-pointer select-none group hover:text-white transition-colors">
+                            <tr className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-faint)]">
+                                <th onClick={(e) => openColumnFilter("sid", e)} className="py-3.5 pl-5 pr-2 font-semibold w-20 cursor-pointer select-none group hover:text-[var(--text-primary)] transition-colors">
                                     <div className="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/></svg>
                                         ID <SortIndicator column="sid" />
                                     </div>
                                 </th>
-                                <th onClick={(e) => openColumnFilter("title", e)} className="py-3.5 px-4 font-semibold w-full min-w-[200px] sm:min-w-[280px] cursor-pointer select-none group hover:text-white transition-colors">
+                                <th onClick={(e) => openColumnFilter("title", e)} className="py-3.5 px-4 font-semibold w-full min-w-[200px] sm:min-w-[280px] cursor-pointer select-none group hover:text-[var(--text-primary)] transition-colors">
                                     <div className="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
                                         Task <SortIndicator column="title" />
                                         {filterTitle && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
-                                <th onClick={(e) => openColumnFilter("status", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors">
+                                <th onClick={(e) => openColumnFilter("status", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-[var(--text-primary)] transition-colors">
                                     <div className="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M2 20h.01"/><path d="M7 20v-4"/><path d="M12 20v-8"/><path d="M17 20V8"/><path d="M22 4v16"/></svg>
                                         Status <SortIndicator column="status" />
                                         {filterStatuses.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
-                                <th onClick={(e) => openColumnFilter("assignee", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden sm:table-cell">
+                                <th onClick={(e) => openColumnFilter("assignee", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-[var(--text-primary)] transition-colors hidden sm:table-cell">
                                     <div className="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                         Assignee <SortIndicator column="assignee" />
                                         {filterAssigneeIds.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
-                                <th onClick={(e) => openColumnFilter("priority", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden md:table-cell">
+                                <th onClick={(e) => openColumnFilter("priority", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-[var(--text-primary)] transition-colors hidden md:table-cell">
                                     <div className="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
                                         Priority <SortIndicator column="priority" />
                                         {filterPriorities.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
-                                <th onClick={(e) => openColumnFilter("estimate", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden lg:table-cell">
+                                <th onClick={(e) => openColumnFilter("estimate", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-[var(--text-primary)] transition-colors hidden lg:table-cell">
                                     <div className="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                         Deadline <SortIndicator column="estimate" />
                                         {filterDueDate && <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />}
                                     </div>
                                 </th>
-                                <th onClick={(e) => openColumnFilter("type", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-white transition-colors hidden xl:table-cell">
+                                <th onClick={(e) => openColumnFilter("type", e)} className="px-4 py-3.5 font-semibold cursor-pointer select-none group hover:text-[var(--text-primary)] transition-colors hidden xl:table-cell">
                                     <div className="flex items-center gap-1.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0" aria-hidden><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
                                         Type <SortIndicator column="type" />
@@ -952,28 +952,28 @@ export function KanbanBoard() {
                                             <span className="font-medium max-w-[400px] truncate block">{t.title}</span>
                                         </td>
                                         <td className="px-4 py-3.5">
-                                            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${COL_THEME[t.status]?.badge}`}>
+                                            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${COL_THEME[t.status]?.badge}`}>
                                                 {t.status}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3.5 hidden sm:table-cell">
                                             {assigneeName ? (
                                                 <div className="flex items-center gap-2" title={assigneeName}>
-                                                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(assigneeName)} text-[9px] font-bold text-white ring-1 ring-white/20`}>
+                                                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${avatarGradient(assigneeName)} text-[11px] font-bold ring-1 ring-white/15`}>
                                                         {assigneeName.charAt(0).toUpperCase()}
                                                     </span>
-                                                    <span className="truncate text-xs font-medium text-white/70">
+                                                    <span className="truncate text-xs font-medium text-[var(--text-muted)]">
                                                         {assignees.length > 1 ? `${assigneeName} +${assignees.length - 1}` : assigneeName}
                                                     </span>
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-white/30 italic">Unassigned</span>
+                                                <span className="text-xs text-[var(--text-faint)] italic">Unassigned</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-3.5 hidden md:table-cell">
                                             <div className="flex items-center gap-1.5">
                                                 <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_COLORS[t.priority || "Medium"]?.replace("text-", "bg-") ?? "bg-zinc-500"}`} />
-                                                <span className={`text-[11px] font-semibold ${PRIORITY_COLORS[t.priority || "Medium"] ?? "text-white/70"}`}>
+                                                <span className={`text-[11px] font-semibold ${PRIORITY_COLORS[t.priority || "Medium"] ?? "text-[var(--text-muted)]"}`}>
                                                     {t.priority || "Medium"}
                                                 </span>
                                             </div>
@@ -993,7 +993,7 @@ export function KanbanBoard() {
                                             )}
                                         </td>
                                         <td className="px-4 py-3.5 hidden xl:table-cell">
-                                            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${TYPE_COLORS[t.type || "Task"] ?? TYPE_COLORS.Task}`}>
+                                            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${TYPE_COLORS[t.type || "Task"] ?? TYPE_COLORS.Task}`}>
                                                 {t.type || "Task"}
                                             </span>
                                         </td>
@@ -1001,7 +1001,7 @@ export function KanbanBoard() {
                                             <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                                                  <button
                                                      onClick={(e) => { e.stopPropagation(); archiveTicket(t._id, !showArchived); }}
-                                                     className={`rounded-md p-1.5 transition-colors hover:bg-white/10 ${showArchived ? "text-amber-400" : "text-white/40 hover:text-white"}`}
+                                                     className={`rounded-md p-1.5 transition-colors hover:bg-white/10 ${showArchived ? "text-warn" : "text-[var(--text-faint)] hover:text-[var(--text-primary)]"}`}
                                                      title={showArchived ? "Unarchive" : "Archive"}
                                                  >
                                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
@@ -1010,7 +1010,7 @@ export function KanbanBoard() {
                                                  </button>
                                                  <button
                                                      onClick={(e) => { e.stopPropagation(); deleteTicket(t._id); }}
-                                                     className="rounded-md p-1.5 text-rose-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
+                                                     className="rounded-md p-1.5 text-danger transition-colors hover:bg-danger/10 hover:text-danger"
                                                      title="Delete"
                                                  >
                                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
@@ -1035,20 +1035,20 @@ export function KanbanBoard() {
                                                 onEnter={() => void handleCreate("Todo")}
                                                 onEscape={() => { setIsAdding(null); setPendingMentionIds([]); }}
                                                 placeholder="Task title... (@ to mention)"
-                                                className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
+                                                className="flex-1 bg-transparent text-sm text-[var(--text-primary)] placeholder-white/30 outline-none"
                                                 users={users}
                                                 onMention={(u) => setPendingMentionIds((prev) => Array.from(new Set([...prev, u._id])))}
                                             />
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => void handleCreate("Todo")}
-                                                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500"
+                                                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-violet-500"
                                                 >
                                                     Add
                                                 </button>
                                                 <button
                                                     onClick={() => { setIsAdding(null); setPendingMentionIds([]); }}
-                                                    className="px-2 py-1.5 text-xs text-white/40 hover:text-white"
+                                                    className="px-2 py-1.5 text-xs text-[var(--text-faint)] hover:text-[var(--text-primary)]"
                                                 >
                                                     Cancel
                                                 </button>
@@ -1057,7 +1057,7 @@ export function KanbanBoard() {
                                     ) : (
                                         <button
                                             onClick={() => setIsAdding("Todo")}
-                                            className="flex w-full items-center justify-center gap-2 px-5 py-3 text-xs font-medium text-white/30 hover:bg-white/[0.02] hover:text-white/60 transition-colors"
+                                            className="flex w-full items-center justify-center gap-2 px-5 py-3 text-xs font-medium text-[var(--text-faint)] hover:bg-white/[0.02] hover:text-[var(--text-muted)] transition-colors"
                                         >
                                             <span className="text-lg leading-none">+</span>
                                             Add card
@@ -1068,7 +1068,7 @@ export function KanbanBoard() {
 
                             {finalTickets.length === 0 && !isAdding && (
                                 <tr>
-                                    <td colSpan={8} className="py-12 text-center text-sm text-white/40">
+                                    <td colSpan={8} className="py-12 text-center text-sm text-[var(--text-faint)]">
                                         No tasks found.
                                     </td>
                                 </tr>
@@ -1083,11 +1083,11 @@ export function KanbanBoard() {
                 <>
                     <div className="fixed inset-0 z-[300]" onClick={() => setEditingDeadlineId(null)} />
                     <div
-                        className="fixed z-[310] w-52 rounded-2xl border border-white/[0.12] bg-[rgba(18,18,20,0.97)] p-3 shadow-[0_16px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+                        className="fixed z-[310] w-52 rounded-2xl border border-white/[0.12] bg-[rgba(18,18,20,0.97)] p-3 shadow-[0_16px_50px_rgba(0,0,0,0.55)] "
                         style={{ top: editingDeadlinePos.top, left: editingDeadlinePos.left }}
                     >
                         <div className="mb-2 flex items-center justify-between">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-white/35">Set Deadline</p>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-faint)]">Set Deadline</p>
                             <button
                                 type="button"
                                 onClick={() => {
@@ -1095,7 +1095,7 @@ export function KanbanBoard() {
                                     if (deadlineDateInputRef.current) deadlineDateInputRef.current.value = today;
                                     void updateDeadline(editingDeadlineId, new Date(today + "T12:00:00").toISOString());
                                 }}
-                                className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-300"
+                                className="rounded-md px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-300"
                             >
                                 Today
                             </button>
@@ -1116,7 +1116,7 @@ export function KanbanBoard() {
                             <button
                                 type="button"
                                 onClick={() => void updateDeadline(editingDeadlineId, null, true)}
-                                className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/35 bg-rose-500/15 px-4 py-2.5 text-sm font-semibold text-rose-300 transition-colors hover:border-rose-400/55 hover:bg-rose-500/25 hover:text-rose-200"
+                                className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-danger/35 bg-danger/15 px-4 py-2.5 text-sm font-semibold text-danger transition-colors hover:border-danger/55 hover:bg-danger/25 hover:text-danger"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                 Remove deadline
@@ -1132,17 +1132,17 @@ export function KanbanBoard() {
                 <>
                     <div className="fixed inset-0 z-[200]" onClick={() => setActiveColumnFilter(null)} />
                     <div
-                        className="fixed z-[210] w-64 rounded-2xl border border-white/[0.12] bg-[rgba(18,18,20,0.97)] p-2 shadow-[0_16px_50px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+                        className="fixed z-[210] w-64 rounded-2xl border border-white/[0.12] bg-[rgba(18,18,20,0.97)] p-2 shadow-[0_16px_50px_rgba(0,0,0,0.55)] "
                         style={{ top: columnFilterPos.top, left: columnFilterPos.left }}
                     >
                         {/* Sort */}
                         <div className="mb-1.5">
-                            <p className="px-2 pb-1 pt-0.5 text-[10px] font-bold uppercase tracking-wider text-white/30">Sort</p>
+                            <p className="px-2 pb-1 pt-0.5 text-[11px] font-bold uppercase tracking-wider text-[var(--text-faint)]">Sort</p>
                             <div className="flex gap-1 px-1">
                                 <button
                                     type="button"
                                     onClick={() => sortBy(activeColumnFilter as keyof Ticket | "assignee", "asc")}
-                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${sortConfig?.key === activeColumnFilter && sortConfig.direction === "asc" ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/30" : "text-white/60 hover:bg-white/[0.06] hover:text-white"}`}
+                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${sortConfig?.key === activeColumnFilter && sortConfig.direction === "asc" ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/30" : "text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m18 15-6-6-6 6"/></svg>
                                     A → Z
@@ -1150,7 +1150,7 @@ export function KanbanBoard() {
                                 <button
                                     type="button"
                                     onClick={() => sortBy(activeColumnFilter as keyof Ticket | "assignee", "desc")}
-                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${sortConfig?.key === activeColumnFilter && sortConfig.direction === "desc" ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/30" : "text-white/60 hover:bg-white/[0.06] hover:text-white"}`}
+                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${sortConfig?.key === activeColumnFilter && sortConfig.direction === "desc" ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/30" : "text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="m6 9 6 6 6-6"/></svg>
                                     Z → A
@@ -1161,7 +1161,7 @@ export function KanbanBoard() {
                         {/* Filter — only for columns that support it */}
                         {activeColumnFilter !== "sid" && (
                             <div className="border-t border-white/[0.08] pt-1.5">
-                                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/30">Filter</p>
+                                <p className="px-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-faint)]">Filter</p>
 
                                 {activeColumnFilter === "title" && (
                                     <div className="px-1 pb-1">
@@ -1174,7 +1174,7 @@ export function KanbanBoard() {
                                             className="glass-input w-full py-1.5 text-sm"
                                         />
                                         {filterTitle && (
-                                            <button type="button" onClick={() => setFilterTitle("")} className="mt-1 text-[11px] text-white/40 hover:text-white">Clear</button>
+                                            <button type="button" onClick={() => setFilterTitle("")} className="mt-1 text-[11px] text-[var(--text-faint)] hover:text-[var(--text-primary)]">Clear</button>
                                         )}
                                     </div>
                                 )}
@@ -1183,7 +1183,7 @@ export function KanbanBoard() {
                                     <div className="space-y-0.5 px-1 pb-1">
                                         {(["Todo", "In progress", "Done", "Blocked"] as Ticket["status"][]).map((s) => (
                                             <button key={s} type="button" onClick={() => toggleStatusFilter(s)}
-                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterStatuses.includes(s) ? "bg-violet-500/20 text-white ring-1 ring-violet-400/25" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
+                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterStatuses.includes(s) ? "bg-violet-500/20 text-[var(--text-primary)] ring-1 ring-violet-400/25" : "text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}>
                                                 <span className={`h-2 w-2 rounded-full ${COL_THEME[s]?.dot}`} />
                                                 {s}
                                             </button>
@@ -1198,8 +1198,8 @@ export function KanbanBoard() {
                                             const active = filterAssigneeIds.includes(u._id);
                                             return (
                                                 <button key={u._id} type="button" onClick={() => toggleAssigneeFilter(u._id)}
-                                                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${active ? "bg-violet-500/20 text-white ring-1 ring-violet-400/25" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
-                                                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${avatarGradient(name)} text-[9px] font-bold text-white`}>
+                                                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${active ? "bg-violet-500/20 text-[var(--text-primary)] ring-1 ring-violet-400/25" : "text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}>
+                                                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${avatarGradient(name)} text-[11px] font-bold`}>
                                                         {name.charAt(0).toUpperCase()}
                                                     </span>
                                                     <span className="truncate">{name}</span>
@@ -1213,7 +1213,7 @@ export function KanbanBoard() {
                                     <div className="space-y-0.5 px-1 pb-1">
                                         {["Highest", "High", "Medium", "Low", "Lowest"].map((p) => (
                                             <button key={p} type="button" onClick={() => togglePriorityFilter(p)}
-                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterPriorities.includes(p) ? "bg-violet-500/20 text-white ring-1 ring-violet-400/25" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
+                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterPriorities.includes(p) ? "bg-violet-500/20 text-[var(--text-primary)] ring-1 ring-violet-400/25" : "text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}>
                                                 <span className={`h-1.5 w-1.5 rounded-full ${PRIORITY_COLORS[p]?.replace("text-", "bg-") ?? "bg-zinc-500"}`} />
                                                 <span className={PRIORITY_COLORS[p]}>{p}</span>
                                             </button>
@@ -1232,12 +1232,12 @@ export function KanbanBoard() {
                                         <button
                                             type="button"
                                             onClick={() => setFilterPastDue((v) => !v)}
-                                            className={`w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${filterPastDue ? "border-rose-500/40 bg-rose-500/15 text-rose-200" : "border-white/10 text-white/60 hover:bg-white/[0.06] hover:text-white"}`}
+                                            className={`w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${filterPastDue ? "border-danger/40 bg-danger/15 text-danger" : "border-white/10 text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}
                                         >
                                             {filterPastDue ? "Past due only: ON" : "Past due only: OFF"}
                                         </button>
                                         {(filterDueDate || filterPastDue) && (
-                                            <button type="button" onClick={() => { setFilterDueDate(""); setFilterPastDue(false); }} className="text-[11px] text-white/40 hover:text-white">Clear</button>
+                                            <button type="button" onClick={() => { setFilterDueDate(""); setFilterPastDue(false); }} className="text-[11px] text-[var(--text-faint)] hover:text-[var(--text-primary)]">Clear</button>
                                         )}
                                     </div>
                                 )}
@@ -1246,8 +1246,8 @@ export function KanbanBoard() {
                                     <div className="space-y-0.5 px-1 pb-1">
                                         {(["Task", "Bug", "Story", "Epic"] as const).map((tp) => (
                                             <button key={tp} type="button" onClick={() => toggleTypeFilter(tp)}
-                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterTypes.includes(tp) ? "bg-violet-500/20 text-white ring-1 ring-violet-400/25" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}>
-                                                <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase ${TYPE_COLORS[tp]}`}>{tp}</span>
+                                                className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${filterTypes.includes(tp) ? "bg-violet-500/20 text-[var(--text-primary)] ring-1 ring-violet-400/25" : "text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]"}`}>
+                                                <span className={`rounded-full border px-1.5 py-0.5 text-[11px] font-bold uppercase ${TYPE_COLORS[tp]}`}>{tp}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -1262,26 +1262,16 @@ export function KanbanBoard() {
             {/* ── Ticket Detail Panel ── */}
             {selectedTicketId && (
                 <>
+                    {/* Scrim: clicks bubble to the board wrapper, which saves and closes */}
+                    <div className="fixed inset-0 z-[340] bg-black/50 animate-in fade-in duration-200" aria-hidden />
                     {/* Panel */}
-                    <div className="fixed inset-y-0 right-0 z-[350] flex w-full flex-col md:w-[min(52vw,860px)] animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
-                        {/* Top violet accent line */}
-                        <div className="absolute inset-x-0 top-0 z-10 h-[2px] bg-gradient-to-r from-transparent via-violet-500/70 to-transparent" />
-
-                        {/* Left edge shadow/glow */}
-                        <div className="pointer-events-none absolute inset-y-0 -left-10 w-10 bg-gradient-to-r from-transparent to-black/40" />
-
-                        {/* Glass border */}
-                        <div className="absolute inset-0 rounded-none border-l border-white/[0.08] bg-[#0d0d10] shadow-[-20px_0_60px_rgba(0,0,0,0.55)] ring-1 ring-inset ring-white/[0.04]" />
-
-                        {/* Drag handle hint */}
-                        <div className="absolute left-0 top-1/2 z-20 -translate-y-1/2 -translate-x-1/2">
-                            <div className="flex h-10 w-5 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e] shadow-lg">
-                                <div className="flex flex-col gap-1">
-                                    <span className="h-3.5 w-[2px] rounded-full bg-white/20" />
-                                    <span className="h-3.5 w-[2px] rounded-full bg-white/20" />
-                                </div>
-                            </div>
-                        </div>
+                    <div
+                        role="dialog"
+                        aria-label="Ticket details"
+                        className="fixed inset-y-0 right-0 z-[350] flex w-full flex-col border-l border-[var(--glass-border-bright)] bg-[var(--surface-mid)] shadow-[-24px_0_60px_rgba(0,0,0,0.5)] animate-in slide-in-from-right duration-300 md:w-[min(56vw,820px)]"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="absolute inset-x-0 top-0 z-10 h-[2px] bg-[var(--accent)]" />
 
                         {/* Content */}
                         <div className="relative h-full overflow-hidden">

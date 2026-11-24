@@ -13,6 +13,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,20 +37,17 @@ export function LoginForm() {
   }
 
   return (
-    <div className="glass-card glass-card-elevated w-full max-w-md rounded-3xl p-9 sm:p-11">
+    <div className="glass-card glass-card-elevated w-full max-w-md p-8 sm:p-10">
       <div className="mb-9 flex flex-col items-center text-center">
-        <div className="mb-6 rounded-2xl border border-[var(--glass-border)] bg-[var(--surface-mid)] p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-md">
-          <Image
-            src="/ultra-shaheens-logo.png"
-            alt="Ultra Shaheens"
-            width={200}
-            height={120}
-            className="h-auto w-44 object-contain"
-            priority
-          />
-        </div>
-        <span className="glass-pill mb-3 text-[var(--accent)] font-bold">Sign in</span>
-        <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-[1.65rem]">
+        <Image
+          src="/ultra-shaheens-logo.png"
+          alt="Ultra Shaheens"
+          width={200}
+          height={120}
+          className="mb-6 h-auto w-36 object-contain"
+          priority
+        />
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">
           Welcome back
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
@@ -61,7 +59,7 @@ export function LoginForm() {
         <div>
           <label
             htmlFor="email"
-            className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]"
+            className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]"
           >
             Email or username
           </label>
@@ -81,25 +79,35 @@ export function LoginForm() {
         <div>
           <label
             htmlFor="password"
-            className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]"
+            className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]"
           >
             Password
           </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="glass-input"
-          />
+          <div className="relative">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="glass-input pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-pressed={showPassword}
+              className="absolute inset-y-0 right-0 px-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
         </div>
 
         {error ? (
           <p
-            className="rounded-xl border border-red-400/25 bg-red-950/35 px-3 py-2.5 text-sm text-red-100 backdrop-blur-md"
+            className="rounded-sm border border-danger/40 bg-danger/10 px-3 py-2.5 text-sm text-danger"
             role="alert"
           >
             {error}

@@ -27,7 +27,7 @@ export function EmojiPickerModal({
 
   return (
     <div
-      className="fixed inset-0 z-[280] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[280] flex items-center justify-center bg-black/60 p-4 "
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -40,7 +40,7 @@ export function EmojiPickerModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/[0.1] px-4 py-3">
-          <h2 className="text-sm font-semibold text-white">Page icon</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Page icon</h2>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -48,14 +48,14 @@ export function EmojiPickerModal({
                 onClear();
                 onClose();
               }}
-              className="text-xs font-medium text-[var(--xanadu)] transition-colors hover:text-white"
+              className="text-xs font-medium text-[var(--xanadu)] transition-colors hover:text-[var(--text-primary)]"
             >
               Remove
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-white/[0.08] px-2 py-1 text-[var(--xanadu)] transition-colors hover:border-white/15 hover:bg-white/10 hover:text-white"
+              className="rounded-xl border border-white/[0.08] px-2 py-1 text-[var(--xanadu)] transition-colors hover:border-white/15 hover:bg-white/10 hover:text-[var(--text-primary)]"
               aria-label="Close"
             >
               ×

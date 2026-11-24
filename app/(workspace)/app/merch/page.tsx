@@ -35,17 +35,17 @@ const STATUS_OPTIONS = ["pending", "processing", "dispatched", "cancelled"] as c
 type Status = (typeof STATUS_OPTIONS)[number];
 
 const STATUS_STYLES: Record<Status, string> = {
-  pending: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  processing: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
-  dispatched: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  cancelled: "bg-red-500/15 text-red-400 border-red-500/30",
+  pending: "bg-warn/15 text-warn border-warn/30",
+  processing: "bg-info/15 text-info border-info/30",
+  dispatched: "bg-ok/15 text-ok border-ok/30",
+  cancelled: "bg-danger/15 text-danger border-danger/30",
 };
 
 const STATUS_DOT: Record<Status, string> = {
-  pending: "bg-amber-400",
-  processing: "bg-indigo-400",
-  dispatched: "bg-emerald-400",
-  cancelled: "bg-red-400",
+  pending: "bg-warn",
+  processing: "bg-info",
+  dispatched: "bg-ok",
+  cancelled: "bg-danger",
 };
 
 function formatPKR(amount: number) {
@@ -125,10 +125,10 @@ export default function MerchOrdersPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="glass-pill text-rose-400">Shop</span>
+              <span className="glass-pill text-danger">Shop</span>
               <span className="glass-pill">{orders.length} total orders</span>
             </div>
-            <h1 className="text-base font-semibold tracking-tight text-white md:text-lg">
+            <h1 className="text-base font-semibold tracking-tight text-[var(--text-primary)] md:text-lg">
               Executive Merch — Orders
             </h1>
             <p className="text-xs text-[var(--text-muted)]">
@@ -138,7 +138,7 @@ export default function MerchOrdersPage() {
           <button
             onClick={() => void fetchOrders()}
             disabled={loading}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/70 transition-all hover:bg-white/10 hover:text-white disabled:opacity-40"
+            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-[var(--text-muted)] transition-all hover:bg-white/10 hover:text-[var(--text-primary)] disabled:opacity-40"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}>
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
@@ -169,8 +169,8 @@ export default function MerchOrdersPage() {
             onClick={() => setFilter(f)}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
               filter === f
-                ? "bg-white/10 text-white shadow-inner"
-                : "text-[var(--text-muted)] hover:bg-white/5 hover:text-white"
+                ? "bg-white/10 text-[var(--text-primary)] shadow-inner"
+                : "text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text-primary)]"
             }`}
           >
             {f === "all" ? `All (${orders.length})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${counts[f] ?? 0})`}
@@ -182,7 +182,7 @@ export default function MerchOrdersPage() {
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
         {loading ? (
           <div className="flex h-40 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-danger border-t-transparent" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex h-40 flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
@@ -202,27 +202,27 @@ export default function MerchOrdersPage() {
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
                   {/* Order ID + date */}
                   <div className="min-w-[140px]">
-                    <p className="font-mono text-xs font-bold text-white">{order.orderId}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">{formatDate(order.createdAt)}</p>
+                    <p className="font-mono text-xs font-bold text-[var(--text-primary)]">{order.orderId}</p>
+                    <p className="text-[11px] text-[var(--text-muted)]">{formatDate(order.createdAt)}</p>
                   </div>
 
                   {/* Customer */}
                   <div className="min-w-[130px] flex-1">
-                    <p className="truncate text-sm font-semibold text-white">{order.customer.name}</p>
-                    <p className="truncate text-[10px] text-[var(--text-muted)]">{order.customer.phone} · {order.customer.city}</p>
+                    <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{order.customer.name}</p>
+                    <p className="truncate text-[11px] text-[var(--text-muted)]">{order.customer.phone} · {order.customer.city}</p>
                   </div>
 
                   {/* Payment method */}
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
                     order.paymentMethod === "prepaid"
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                      : "border-white/20 bg-white/5 text-white/60"
+                      ? "border-ok/30 bg-ok/10 text-ok"
+                      : "border-white/20 bg-white/5 text-[var(--text-muted)]"
                   }`}>
                     {order.paymentMethod === "prepaid" ? "Prepaid" : "COD"}
                   </span>
 
                   {/* Total */}
-                  <p className="text-sm font-bold text-white">{formatPKR(order.total)}</p>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">{formatPKR(order.total)}</p>
 
                   {/* Status badge */}
                   <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[order.status]}`}>
@@ -235,7 +235,7 @@ export default function MerchOrdersPage() {
                     value={order.status}
                     disabled={updating === order.orderId}
                     onChange={(e) => void updateStatus(order.orderId, e.target.value as Status)}
-                    className="rounded-lg border border-white/10 bg-[var(--surface-overlay)] px-2 py-1.5 text-xs text-white/80 transition-all hover:border-white/20 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-40"
+                    className="rounded-lg border border-white/10 bg-[var(--surface-overlay)] px-2 py-1.5 text-xs text-[var(--text-primary)] transition-all hover:border-white/20 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] disabled:opacity-40"
                   >
                     {STATUS_OPTIONS.map((s) => (
                       <option key={s} value={s} className="bg-[#27272a]">
@@ -247,7 +247,7 @@ export default function MerchOrdersPage() {
                   {/* Expand toggle */}
                   <button
                     onClick={() => setExpanded(expanded === order._id ? null : order._id)}
-                    className="ml-auto flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[10px] font-medium text-white/50 transition-all hover:bg-white/10 hover:text-white"
+                    className="ml-auto flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-faint)] transition-all hover:bg-white/10 hover:text-[var(--text-primary)]"
                   >
                     {expanded === order._id ? "Hide" : "Details"}
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`h-3 w-3 transition-transform ${expanded === order._id ? "rotate-180" : ""}`}>
@@ -262,24 +262,24 @@ export default function MerchOrdersPage() {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {/* Customer details */}
                       <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
-                        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Customer</p>
-                        <p className="text-sm font-semibold text-white">{order.customer.name}</p>
+                        <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Customer</p>
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">{order.customer.name}</p>
                         <p className="text-xs text-[var(--text-muted)]">{order.customer.phone}</p>
-                        <p className="mt-1 text-xs text-white/70">{order.customer.address}</p>
-                        <p className="text-xs text-white/70">{order.customer.city}</p>
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">{order.customer.address}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{order.customer.city}</p>
                       </div>
 
                       {/* Items */}
                       <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 sm:col-span-1 lg:col-span-1">
-                        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Items</p>
+                        <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Items</p>
                         <div className="space-y-1.5">
                           {order.items.map((item, i) => (
                             <div key={i} className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
-                                <p className="truncate text-xs font-medium text-white">{item.productName}</p>
-                                <p className="text-[10px] text-[var(--text-muted)]">Size: {item.size} · Qty: {item.quantity}</p>
+                                <p className="truncate text-xs font-medium text-[var(--text-primary)]">{item.productName}</p>
+                                <p className="text-[11px] text-[var(--text-muted)]">Size: {item.size} · Qty: {item.quantity}</p>
                               </div>
-                              <p className="shrink-0 text-xs font-semibold text-white">{formatPKR(item.lineTotal)}</p>
+                              <p className="shrink-0 text-xs font-semibold text-[var(--text-primary)]">{formatPKR(item.lineTotal)}</p>
                             </div>
                           ))}
                         </div>
@@ -287,23 +287,23 @@ export default function MerchOrdersPage() {
 
                       {/* Pricing summary */}
                       <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
-                        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Pricing</p>
+                        <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Pricing</p>
                         <div className="space-y-1 text-xs">
-                          <div className="flex justify-between text-white/70">
+                          <div className="flex justify-between text-[var(--text-muted)]">
                             <span>Subtotal</span>
                             <span>{formatPKR(order.subtotal)}</span>
                           </div>
                           {order.prepaidDiscount > 0 && (
-                            <div className="flex justify-between text-emerald-400">
+                            <div className="flex justify-between text-ok">
                               <span>Prepaid discount (5%)</span>
                               <span>− {formatPKR(order.prepaidDiscount)}</span>
                             </div>
                           )}
-                          <div className="flex justify-between text-white/70">
+                          <div className="flex justify-between text-[var(--text-muted)]">
                             <span>Delivery</span>
                             <span>{formatPKR(order.deliveryCharge)}</span>
                           </div>
-                          <div className="flex justify-between border-t border-white/10 pt-1 font-bold text-white">
+                          <div className="flex justify-between border-t border-white/10 pt-1 font-bold text-[var(--text-primary)]">
                             <span>Total</span>
                             <span>{formatPKR(order.total)}</span>
                           </div>

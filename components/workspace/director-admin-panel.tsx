@@ -64,8 +64,8 @@ export function DirectorAdminPanel({
   }
 
   return (
-    <section className="glass-card mb-6 rounded-[1.5rem] border border-white/[0.06] p-6">
-      <h2 className="text-sm font-semibold text-white">Team members</h2>
+    <section className="glass-card mb-6 rounded border border-white/[0.06] p-6">
+      <h2 className="text-sm font-semibold text-[var(--text-primary)]">Team members</h2>
       <p className="mt-1 text-xs text-[var(--text-muted)]">
         Team members sign in with a username and password. No company email needed.
       </p>
@@ -107,7 +107,7 @@ export function DirectorAdminPanel({
       </form>
 
       {message && (
-        <p className={`mt-3 text-xs ${message.ok ? "text-emerald-400" : "text-red-300"}`}>{message.text}</p>
+        <p className={`mt-3 text-xs ${message.ok ? "text-ok" : "text-danger"}`}>{message.text}</p>
       )}
 
       {directors.length > 0 && (
@@ -115,7 +115,7 @@ export function DirectorAdminPanel({
           {directors.map((d) => (
             <li key={d._id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">{d.name}</p>
+                <p className="truncate text-sm font-medium text-[var(--text-primary)]">{d.name}</p>
                 <p className="truncate text-xs text-[var(--text-muted)]">
                   @{d.username}
                   {d.designation ? ` · ${d.designation}` : ""}

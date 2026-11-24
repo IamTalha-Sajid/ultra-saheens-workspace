@@ -20,6 +20,42 @@ function pageCreatorLabel(c: PageCreator) {
   return "Unknown creator";
 }
 
+const ICONS = {
+  board: <><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M7 7h10" /><path d="M7 12h10" /><path d="M7 17h10" /></>,
+  files: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></>,
+  links: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>,
+  merch: <><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></>,
+  members: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
+};
+
+function NavItem({
+  href,
+  label,
+  icon,
+  active,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  icon: keyof typeof ICONS;
+  active: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <Link href={href} onClick={onClick} className="nav-link" aria-current={active ? "page" : undefined}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0" aria-hidden>
+        {ICONS[icon]}
+      </svg>
+      <span className="truncate">{label}</span>
+    </Link>
+  );
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase() || "?";
+}
+
 function TreeRows({
   nodes,
   depth,
@@ -44,7 +80,7 @@ function TreeRows({
               type="button"
               onClick={() => onSelect(node._id)}
               className={`glass-nav-item min-w-0 flex-1 justify-start border-0 bg-transparent py-1.5 text-left transition-colors ${selectedId === node._id
-                ? "bg-white/[0.06] text-white shadow-[0_1px_0_rgba(255,255,255,0.05)_inset]"
+                ? "bg-white/[0.06] text-[var(--text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.05)_inset]"
                 : "hover:bg-white/[0.04]"
                 }`}
             >
@@ -57,7 +93,7 @@ function TreeRows({
                 </span>
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block truncate">{node.title || "Untitled"}</span>
-                  <span className="block truncate text-[10px] font-medium text-[var(--text-muted)]">
+                  <span className="block truncate text-[11px] font-medium text-[var(--text-muted)]">
                     {pageCreatorLabel(node.createdBy)}
                   </span>
                 </span>
@@ -81,7 +117,7 @@ function TreeRows({
                 e.stopPropagation();
                 onDelete(node._id, node.title);
               }}
-              className="shrink-0 rounded p-1 text-[var(--xanadu)] opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
+              className="shrink-0 rounded p-1 text-[var(--xanadu)] opacity-0 transition-opacity hover:bg-danger/20 hover:text-danger group-hover:opacity-100"
             >
               ×
             </button>
@@ -167,7 +203,7 @@ export function PageSidebar({
   };
 
   return (
-    <aside className="relative z-[1] flex h-full w-[18rem] md:w-[20rem] shrink-0 flex-col border-r border-[var(--glass-border)] bg-[var(--surface-mid)] p-4 shadow-[12px_0_48px_-12px_rgba(0,0,0,0.5)]">
+    <aside className="relative z-[1] flex h-full w-[18rem] md:w-[20rem] shrink-0 flex-col border-r border-[var(--glass-border)] bg-[var(--surface-mid)] p-4 ">
       <div className="mb-7 flex items-start justify-between gap-2">
         <Link
           href="/app"
@@ -188,14 +224,14 @@ export function PageSidebar({
             <p className="truncate text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Workspace
             </p>
-            <p className="truncate text-sm font-semibold text-white">Ultra Shaheens</p>
+            <p className="truncate text-sm font-semibold text-[var(--text-primary)]">Ultra Shaheens</p>
           </div>
         </Link>
         <div className="flex items-center gap-2">
           <NotificationPanel />
           <button 
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-white active:scale-95 transition-transform lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-[var(--text-primary)] active:scale-95 transition-transform lg:hidden"
             aria-label="Close sidebar"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -212,50 +248,20 @@ export function PageSidebar({
       </button>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto" aria-label="Pages">
-        <div className="mb-4 flex flex-col gap-1">
-          <Link href="/app/board" onClick={onClose} className={`glass-nav-item border border-violet-500/15 shadow-[0_0_8px_rgba(139,92,246,0.06)] hover:bg-violet-500/10 ${pathname === "/app/board" ? "bg-violet-500/20 text-white shadow-inner" : ""}`}>
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-fuchsia-600">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
-                <rect width="18" height="18" x="3" y="3" rx="2" /><path d="M7 7h10" /><path d="M7 12h10" /><path d="M7 17h10" />
-              </svg>
-            </span>
-            <span className="font-medium text-white/90">Executive Board</span>
-          </Link>
-          <Link href="/app/board/files" onClick={onClose} className={`glass-nav-item border border-indigo-500/15 shadow-[0_0_8px_rgba(99,102,241,0.06)] hover:bg-indigo-500/10 ${pathname === "/app/board/files" ? "bg-indigo-500/20 text-white shadow-inner" : ""}`}>
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-sky-600">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" x2="12" y1="3" y2="15" />
-              </svg>
-            </span>
-            <span className="font-medium text-white/90">Executive Files</span>
-          </Link>
-          <Link href="/app/board/links" onClick={onClose} className={`glass-nav-item border border-teal-500/15 shadow-[0_0_8px_rgba(20,184,166,0.06)] hover:bg-teal-500/10 ${pathname === "/app/board/links" ? "bg-teal-500/20 text-white shadow-inner" : ""}`}>
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-teal-500 to-emerald-600">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-            </span>
-            <span className="font-medium text-white/90">Executive Links</span>
-          </Link>
+        <p className="eyebrow mb-1 px-3 text-[var(--text-faint)]">Executive</p>
+        <div className="mb-5 flex flex-col gap-0.5">
+          <NavItem href="/app/board" label="Executive Board" icon="board" active={pathname === "/app/board"} onClick={onClose} />
+          <NavItem href="/app/board/files" label="Executive Files" icon="files" active={pathname === "/app/board/files"} onClick={onClose} />
+          <NavItem href="/app/board/links" label="Executive Links" icon="links" active={pathname === "/app/board/links"} onClick={onClose} />
           {!isDirector && (
-          <Link href="/app/merch" onClick={onClose} className={`glass-nav-item border border-rose-500/15 shadow-[0_0_8px_rgba(244,63,94,0.06)] hover:bg-rose-500/10 ${pathname === "/app/merch" ? "bg-rose-500/20 text-white shadow-inner" : ""}`}>
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-rose-500 to-pink-600">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
-                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" />
-              </svg>
-            </span>
-            <span className="font-medium text-white/90">Executive Merch</span>
-          </Link>
+            <NavItem href="/app/merch" label="Executive Merch" icon="merch" active={pathname === "/app/merch"} onClick={onClose} />
           )}
         </div>
-        <span className="glass-pill mb-2 w-fit px-2 py-1">Pages</span>
+        <p className="eyebrow mb-1 px-3 text-[var(--text-faint)]">Pages</p>
         {loading ? (
           <p className="px-2 text-sm text-[var(--xanadu)]">Loading…</p>
         ) : error ? (
-          <p className="px-2 text-sm text-red-300">{error}</p>
+          <p className="px-2 text-sm text-danger">{error}</p>
         ) : tree.length === 0 ? (
           <p className="px-2 text-sm text-[var(--gray-nickel)]">
             No pages yet. Create one above.
@@ -274,29 +280,23 @@ export function PageSidebar({
 
       <div className="mt-auto pt-4 pb-1">
         {!isDirector && (
-        <Link href="/app/members" onClick={onClose} className={`glass-nav-item mb-4 border border-amber-500/15 shadow-[0_0_8px_rgba(245,158,11,0.06)] hover:bg-amber-500/10 ${pathname === "/app/members" ? "bg-amber-500/20 text-white shadow-inner" : ""}`}>
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-amber-500 to-orange-600">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-white" aria-hidden>
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </span>
-          <span className="font-medium text-white/90">Workforce & Members</span>
-        </Link>
+          <div className="mb-3">
+            <NavItem href="/app/members" label="Workforce & Members" icon="members" active={pathname === "/app/members"} onClick={onClose} />
+          </div>
         )}
 
         <Link
           href="/app/profile"
-          className="mb-4 block cursor-pointer rounded-xl border border-white/5 bg-white/[0.03] px-3 py-3 shadow-lg transition-all hover:bg-white/[0.07] hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          className="mb-3 flex items-center gap-3 rounded-sm border border-[var(--glass-border)] bg-[var(--surface-raised)] px-3 py-2.5 transition-colors hover:border-[var(--glass-border-bright)]"
           aria-label="Profile and account settings"
         >
-          <p className="truncate text-[10px] font-bold uppercase tracking-widest text-indigo-400">Signed in as</p>
-          <div className="mt-1 flex flex-col gap-0.5">
-            <p className="truncate text-sm font-bold text-white">{displayName}</p>
-            {designation && (
-              <p className="truncate text-[11px] font-semibold text-amber-500/90">{designation}</p>
-            )}
-            {email && <p className="truncate text-xs font-medium text-white/40">{email}</p>}
-          </div>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-400/20 text-sm font-bold text-violet-400" aria-hidden>
+            {initials(displayName)}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{displayName}</span>
+            <span className="block truncate text-xs text-[var(--text-faint)]">{designation || email}</span>
+          </span>
         </Link>
         <div className="px-1">
           <SignOutButton />

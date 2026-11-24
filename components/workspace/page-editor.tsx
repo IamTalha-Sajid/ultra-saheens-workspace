@@ -287,7 +287,7 @@ export function PageEditor({
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="glass-input min-w-0 flex-1 border-0 bg-transparent py-1 text-sm font-semibold text-white placeholder:text-[var(--text-muted)] md:text-base focus:bg-transparent focus:shadow-none focus:ring-0"
+                  className="glass-input min-w-0 flex-1 border-0 bg-transparent py-1 text-sm font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-muted)] md:text-base focus:bg-transparent focus:shadow-none focus:ring-0"
                   placeholder="Untitled"
                   aria-label="Page title"
                 />
@@ -302,17 +302,17 @@ export function PageEditor({
                 </button>
               </div>
             ) : (
-              <h1 className="min-w-0 truncate py-1 text-sm font-semibold text-white md:text-base">
+              <h1 className="min-w-0 truncate py-1 text-sm font-semibold text-[var(--text-primary)] md:text-base">
                 {title.trim() || "Untitled"}
               </h1>
             )}
             <p className="text-[11px] text-[var(--text-muted)]">
               Created by{" "}
-              <span className="font-medium text-white/75">
+              <span className="font-medium text-[var(--text-muted)]">
                 {formatCreatedByLabel(createdBy)}
               </span>
               {createdBy.email ? (
-                <span className="text-white/35"> · {createdBy.email}</span>
+                <span className="text-[var(--text-faint)]"> · {createdBy.email}</span>
               ) : null}
             </p>
           </div>
@@ -321,7 +321,7 @@ export function PageEditor({
           {saveState === "saving" ? (
             <span className="text-xs font-medium text-[var(--text-muted)]">Saving…</span>
           ) : saveState === "saved" ? (
-            <span className="text-xs font-medium text-emerald-400">Saved</span>
+            <span className="text-xs font-medium text-ok">Saved</span>
           ) : null}
           {isEditing ? (
             <>
@@ -376,7 +376,7 @@ export function PageEditor({
           aria-label={!isEditing ? "Click to edit page" : undefined}
         >
           {!isEditing ? (
-            <p className="pointer-events-none absolute right-5 top-4 z-[1] select-none rounded-full border border-white/10 bg-[var(--surface-mid)] px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted)] backdrop-blur-md md:right-7">
+            <p className="pointer-events-none absolute right-5 top-4 z-[1] select-none rounded-full border border-white/10 bg-[var(--surface-mid)] px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted)]  md:right-7">
               Click to edit
             </p>
           ) : null}

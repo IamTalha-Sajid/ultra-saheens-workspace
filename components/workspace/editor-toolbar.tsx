@@ -26,8 +26,8 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       className={`rounded-lg border border-transparent px-2.5 py-1.5 text-sm transition-all disabled:opacity-40 ${active
-        ? "border-[var(--accent)]/50 bg-[var(--accent-glow)] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset]"
-        : "text-[var(--text-muted)] hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
+        ? "border-[var(--accent)]/50 bg-[var(--accent-glow)] text-[var(--text-primary)] shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset]"
+        : "text-[var(--text-muted)] hover:border-white/10 hover:bg-white/[0.08] hover:text-[var(--text-primary)]"
         }`}
     >
       {children}
@@ -105,7 +105,7 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
       </div>
 
       <div className="mr-2 flex flex-wrap items-center gap-1 border-r border-white/[0.1] pr-2">
-        <span className="text-[10px] uppercase text-[var(--xanadu)]">H</span>
+        <span className="text-[11px] uppercase text-[var(--xanadu)]">H</span>
         {([1, 2, 3] as const).map((level) => (
           <ToolbarButton
             key={level}
@@ -171,7 +171,7 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
             }
             editor.chain().focus().setFontSize(`${v}px`).run();
           }}
-          className="rounded-lg border border-white/12 bg-black/30 px-2 py-1.5 text-sm text-white backdrop-blur-md"
+          className="rounded-lg border border-white/12 bg-black/30 px-2 py-1.5 text-sm text-[var(--text-primary)] "
         >
           <option value="">Size</option>
           {FONT_SIZES.map((s) => (
@@ -183,7 +183,7 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
       </div>
 
       <div className="mr-2 flex flex-wrap items-center gap-1 border-r border-white/[0.1] pr-2">
-        <span className="text-[10px] uppercase text-[var(--xanadu)]">A</span>
+        <span className="text-[11px] uppercase text-[var(--xanadu)]">A</span>
         <input
           type="color"
           title="Text color"
@@ -197,7 +197,7 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
           type="color"
           title="Highlight"
           className="h-8 w-8 cursor-pointer rounded-lg border border-white/12 bg-white/5 p-0 backdrop-blur-sm"
-          value="#8b5cf6"
+          value="#f3f754"
           onChange={(e) =>
             editor.chain().focus().toggleHighlight({ color: e.target.value }).run()
           }

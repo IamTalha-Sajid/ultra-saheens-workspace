@@ -85,30 +85,30 @@ function formatBytes(n: number): string {
 function FileTypeIcon({ mime }: { mime: string }) {
   if (mime.startsWith("image/"))
     return (
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-300">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-info/15 text-info">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
       </span>
     );
   if (mime.includes("pdf"))
     return (
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 text-rose-300">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-danger/15 text-danger">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
       </span>
     );
   if (mime.includes("word") || mime.includes("document"))
     return (
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-300">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-info/15 text-info">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
       </span>
     );
   if (mime.includes("excel") || mime.includes("sheet"))
     return (
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-ok/15 text-ok">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
       </span>
     );
   return (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-white/40">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[var(--text-faint)]">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
     </span>
   );
@@ -528,8 +528,8 @@ export function CommitteeUploadSection() {
     >
       {/* Header */}
       <div className="border-b border-white/[0.07] px-4 py-4 md:px-5">
-        <h2 className="text-sm font-semibold text-white md:text-base">Executive Board Files</h2>
-        <p className="text-xs text-white/45">Upload and organize files. Drag files anywhere to upload.</p>
+        <h2 className="text-sm font-semibold text-[var(--text-primary)] md:text-base">Executive Board Files</h2>
+        <p className="text-xs text-[var(--text-faint)]">Upload and organize files. Drag files anywhere to upload.</p>
       </div>
 
       {/* Toolbar */}
@@ -544,8 +544,8 @@ export function CommitteeUploadSection() {
                 onClick={() => navigateCrumb(i)}
                 className={`flex items-center gap-1 truncate transition-colors ${
                   i === crumbs.length - 1
-                    ? "pointer-events-none font-medium text-white/80"
-                    : "text-white/45 hover:text-white"
+                    ? "pointer-events-none font-medium text-[var(--text-primary)]"
+                    : "text-[var(--text-faint)] hover:text-[var(--text-primary)]"
                 }`}
               >
                 {i === 0 && (
@@ -564,7 +564,7 @@ export function CommitteeUploadSection() {
           <button
             type="button"
             onClick={startCreateFolder}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/65 transition-all hover:bg-white/[0.07] hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] transition-all hover:bg-white/[0.07] hover:text-[var(--text-primary)]"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
               <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
@@ -576,7 +576,7 @@ export function CommitteeUploadSection() {
           <button
             type="button"
             onClick={() => void uploadFolderViaPicker()}
-            className="flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-all hover:bg-amber-500/20 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg border border-warn/35 bg-warn/10 px-3 py-1.5 text-xs font-semibold text-warn transition-all hover:bg-warn/20 hover:text-[var(--text-primary)]"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
               <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
@@ -599,7 +599,7 @@ export function CommitteeUploadSection() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-200 shadow-[0_0_12px_rgba(139,92,246,0.12)] transition-all hover:bg-violet-500/25 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-200  transition-all hover:bg-violet-500/25 hover:text-[var(--text-primary)]"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -627,7 +627,7 @@ export function CommitteeUploadSection() {
       <div className="min-h-[100px]">
         {/* Column headers */}
         {hasContent && (
-          <div className="grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.04] px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/25 md:px-5">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.04] px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--text-faint)] md:px-5">
             <span className="w-7" />
             <span className="pl-2.5">Name</span>
             <span className="flex items-center gap-8 pr-1">
@@ -642,7 +642,7 @@ export function CommitteeUploadSection() {
         {/* New folder inline row */}
         {isCreatingFolder && (
           <div className="flex items-center gap-3 border-b border-white/[0.04] px-4 py-2.5 md:px-5">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 text-amber-400/70">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 text-warn/70">
               <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15zM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 12h-15a4.483 4.483 0 0 0-3 1.146V10.146z"/>
             </svg>
             <input
@@ -659,10 +659,10 @@ export function CommitteeUploadSection() {
               maxLength={180}
             />
             <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => void confirmCreateFolder()} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500">
+              <button type="button" onClick={() => void confirmCreateFolder()} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-violet-500">
                 Create
               </button>
-              <button type="button" onClick={() => { setIsCreatingFolder(false); setNewFolderName(""); }} className="px-2 py-1.5 text-xs text-white/35 hover:text-white">
+              <button type="button" onClick={() => { setIsCreatingFolder(false); setNewFolderName(""); }} className="px-2 py-1.5 text-xs text-[var(--text-faint)] hover:text-[var(--text-primary)]">
                 Cancel
               </button>
             </div>
@@ -675,7 +675,7 @@ export function CommitteeUploadSection() {
             key={folder._id}
             className="group grid grid-cols-[auto_1fr_auto] items-center border-b border-white/[0.03] px-4 py-2 md:px-5"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 text-amber-400/75">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7 shrink-0 text-warn/75">
               <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15zM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 12h-15a4.483 4.483 0 0 0-3 1.146V10.146z"/>
             </svg>
             {renamingFolderId === folder._id ? (
@@ -700,21 +700,21 @@ export function CommitteeUploadSection() {
                 onDoubleClick={(e) => { e.stopPropagation(); startRenameFolder(folder); }}
                 className="ml-1.5 min-w-0 cursor-pointer rounded-md px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.06]"
               >
-                <span className="block truncate text-sm font-medium text-white/85 hover:text-white">{folder.name}</span>
+                <span className="block truncate text-sm font-medium text-[var(--text-primary)] hover:text-[var(--text-primary)]">{folder.name}</span>
               </button>
             )}
             <div className="ml-3 flex cursor-default select-none items-center gap-8 border-l border-white/[0.06] pl-4 pr-1">
-              <span className="hidden w-28 text-xs text-white/30 sm:block">—</span>
-              <span className="hidden w-20 text-right text-xs text-white/30 sm:block">
+              <span className="hidden w-28 text-xs text-[var(--text-faint)] sm:block">—</span>
+              <span className="hidden w-20 text-right text-xs text-[var(--text-faint)] sm:block">
                 {new Date(folder.createdAt).toLocaleDateString()}
               </span>
-              <span className="w-14 text-right text-xs text-white/30">—</span>
+              <span className="w-14 text-right text-xs text-[var(--text-faint)]">—</span>
               <div className="flex w-16 items-center justify-end">
                 <button
                   type="button"
                   onClick={() => startRenameFolder(folder)}
                   title="Rename folder"
-                  className="rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-violet-300 hover:bg-violet-500/10"
+                  className="rounded-md p-1.5 text-white/0 transition-all group-hover:text-[var(--text-faint)] hover:!text-violet-300 hover:bg-violet-500/10"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 </button>
@@ -722,7 +722,7 @@ export function CommitteeUploadSection() {
                   type="button"
                   onClick={() => void deleteFolder(folder._id)}
                   title="Delete folder and contents"
-                  className="rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-rose-300 hover:bg-rose-500/10"
+                  className="rounded-md p-1.5 text-white/0 transition-all group-hover:text-[var(--text-faint)] hover:!text-danger hover:bg-danger/10"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 </button>
@@ -746,23 +746,23 @@ export function CommitteeUploadSection() {
                 rel="noreferrer"
                 className="ml-1.5 min-w-0 cursor-pointer rounded-md px-2.5 py-1.5 transition-colors hover:bg-white/[0.06]"
               >
-                <p className="truncate text-sm font-medium text-white/85 hover:text-white">{file.title}</p>
+                <p className="truncate text-sm font-medium text-[var(--text-primary)] hover:text-[var(--text-primary)]">{file.title}</p>
                 {file.details && (
-                  <p className="truncate text-[11px] text-white/35">{file.details}</p>
+                  <p className="truncate text-[11px] text-[var(--text-faint)]">{file.details}</p>
                 )}
               </a>
               <div className="ml-3 flex cursor-default select-none items-center gap-8 border-l border-white/[0.06] pl-4 pr-1">
-                <span className="hidden w-28 truncate text-xs text-white/40 sm:block">{by}</span>
-                <span className="hidden w-20 text-right text-xs text-white/40 sm:block">
+                <span className="hidden w-28 truncate text-xs text-[var(--text-faint)] sm:block">{by}</span>
+                <span className="hidden w-20 text-right text-xs text-[var(--text-faint)] sm:block">
                   {new Date(file.createdAt).toLocaleDateString()}
                 </span>
-                <span className="w-14 text-right text-xs text-white/30">{formatBytes(file.size)}</span>
+                <span className="w-14 text-right text-xs text-[var(--text-faint)]">{formatBytes(file.size)}</span>
                 <div className="flex w-10 items-center justify-end">
                   <button
                     type="button"
                     onClick={() => void deleteFile(file._id)}
                     title="Delete file"
-                    className="rounded-md p-1.5 text-white/0 transition-all group-hover:text-white/30 hover:!text-rose-300 hover:bg-rose-500/10"
+                    className="rounded-md p-1.5 text-white/0 transition-all group-hover:text-[var(--text-faint)] hover:!text-danger hover:bg-danger/10"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                   </button>
@@ -774,7 +774,7 @@ export function CommitteeUploadSection() {
 
         {/* Loading */}
         {loading && (
-          <div className="flex items-center gap-2.5 px-4 py-8 text-xs text-white/35 md:px-5">
+          <div className="flex items-center gap-2.5 px-4 py-8 text-xs text-[var(--text-faint)] md:px-5">
             <div className="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white/55" />
             Loading…
           </div>
@@ -789,7 +789,7 @@ export function CommitteeUploadSection() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-white/35">No files here yet</p>
+              <p className="text-sm font-medium text-[var(--text-faint)]">No files here yet</p>
               <p className="text-xs text-white/20">Drag files here or click Upload</p>
             </div>
           </div>
@@ -797,12 +797,12 @@ export function CommitteeUploadSection() {
       </div>
 
       {/* Error */}
-      {error && <p className="px-4 pb-3 text-xs text-rose-300 md:px-5">{error}</p>}
+      {error && <p className="px-4 pb-3 text-xs text-danger md:px-5">{error}</p>}
 
       {/* Upload progress */}
       {uploading.length > 0 && (
         <div className="border-t border-white/[0.06] bg-black/10 px-4 py-3 md:px-5">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/30">Uploading</p>
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--text-faint)]">Uploading</p>
           <div className="space-y-2">
             {uploading.map((item) => (
               <div key={item.id} className="flex flex-col gap-1 text-xs">
@@ -811,32 +811,32 @@ export function CommitteeUploadSection() {
                     <div className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-violet-400/30 border-t-violet-300" />
                   )}
                   {item.status === "done" && (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-emerald-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-ok">
                       <path d="M20 6 9 17l-5-5"/>
                     </svg>
                   )}
                   {item.status === "error" && (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-rose-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-danger">
                       <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
                     </svg>
                   )}
                   <span className={`min-w-0 flex-1 truncate ${
-                    item.status === "error" ? "text-rose-300" :
-                    item.status === "done" ? "text-emerald-300/70" : "text-white/55"
+                    item.status === "error" ? "text-danger" :
+                    item.status === "done" ? "text-ok/70" : "text-white/55"
                   }`}>
                     {item.name}
                     {item.status === "error" && item.error && (
-                      <span className="text-rose-400/70"> — {item.error}</span>
+                      <span className="text-danger/70"> — {item.error}</span>
                     )}
                   </span>
                   {item.status === "uploading" && (
-                    <span className="shrink-0 tabular-nums text-white/35">{item.progress}%</span>
+                    <span className="shrink-0 tabular-nums text-[var(--text-faint)]">{item.progress}%</span>
                   )}
                   {item.status !== "uploading" && (
                     <button
                       type="button"
                       onClick={() => setUploading((prev) => prev.filter((i) => i.id !== item.id))}
-                      className="shrink-0 text-white/20 hover:text-white/60"
+                      className="shrink-0 text-white/20 hover:text-[var(--text-muted)]"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                     </button>

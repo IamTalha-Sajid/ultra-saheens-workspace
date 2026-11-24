@@ -195,7 +195,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
           ← Back to workspace
         </Link>
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          <h1 className="text-xl font-semibold tracking-tight text-white md:text-2xl">
+          <h1 className="text-xl font-semibold tracking-tight text-[var(--text-primary)] md:text-2xl">
             Profile
           </h1>
           <span className="glass-pill text-[var(--accent)]">Account</span>
@@ -222,7 +222,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
                   setEditingAccount(true);
                 })();
               }}
-              className="shrink-0 rounded-xl border border-[var(--glass-border)] bg-transparent p-2 text-[var(--text-muted)] backdrop-blur-sm transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-glow)] hover:text-white"
+              className="shrink-0 rounded-xl border border-[var(--glass-border)] bg-transparent p-2 text-[var(--text-muted)] backdrop-blur-sm transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-glow)] hover:text-[var(--text-primary)]"
               aria-label="Edit display name, username, and email"
             >
               <PencilIcon className="h-5 w-5" />
@@ -236,7 +236,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
               <dt className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
                 Display name
               </dt>
-              <dd className="mt-1 text-base font-semibold text-white">
+              <dd className="mt-1 text-base font-semibold text-[var(--text-primary)]">
                 {name.trim() ? name.trim() : "—"}
               </dd>
             </div>
@@ -244,7 +244,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
               <dt className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
                 Username
               </dt>
-              <dd className="mt-1 font-mono text-base text-white">
+              <dd className="mt-1 font-mono text-base text-[var(--text-primary)]">
                 {username.trim() ? (
                   <span className="text-[var(--accent)]">@{username.trim()}</span>
                 ) : (
@@ -256,7 +256,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
               <dt className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
                 Designation
               </dt>
-              <dd className="mt-1 text-base font-semibold text-white">
+              <dd className="mt-1 text-base font-semibold text-[var(--text-primary)]">
                 {designation.trim() ? designation.trim() : "—"}
               </dd>
             </div>
@@ -349,7 +349,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
               </label>
             ) : null}
             {profileError ? (
-              <p className="mt-3 text-sm font-medium text-red-500">{profileError}</p>
+              <p className="mt-3 text-sm font-medium text-danger">{profileError}</p>
             ) : null}
             {profileMessage ? (
               <p className="mt-3 text-sm font-medium text-[var(--accent)]">{profileMessage}</p>
@@ -378,13 +378,13 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
           <p className="mt-4 text-sm font-medium text-[var(--accent)]">{profileMessage}</p>
         ) : null}
         {!editingAccount && profileError ? (
-          <p className="mt-4 text-sm font-medium text-red-500">{profileError}</p>
+          <p className="mt-4 text-sm font-medium text-danger">{profileError}</p>
         ) : null}
       </div>
 
       <form
         onSubmit={saveSecurity}
-        className="glass-card glass-card-elevated max-w-xl rounded-[1.5rem] p-7 md:p-9"
+        className="glass-card glass-card-elevated max-w-xl rounded p-7 md:p-9"
       >
         <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--text-muted)]">
           Password
@@ -427,7 +427,7 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
           />
         </label>
         {securityError ? (
-          <p className="mt-3 text-sm font-medium text-red-500">{securityError}</p>
+          <p className="mt-3 text-sm font-medium text-danger">{securityError}</p>
         ) : null}
         {securityMessage ? (
           <p className="mt-3 text-sm font-medium text-[var(--accent)]">
