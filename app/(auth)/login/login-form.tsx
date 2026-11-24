@@ -53,7 +53,7 @@ export function LoginForm() {
           Welcome back
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-          Sign in with your @ultrashaheens.com account, or your director username
+          Sign in with your @ultrashaheens.com account, or your username
         </p>
       </div>
 

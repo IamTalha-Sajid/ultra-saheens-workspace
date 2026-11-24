@@ -32,7 +32,7 @@ export function DirectorAdminPanel({
       });
       const data = await res.json();
       if (!res.ok) {
-        setMessage({ ok: false, text: data.error ?? "Could not create the director." });
+        setMessage({ ok: false, text: data.error ?? "Could not create the team member." });
         return;
       }
       setMessage({ ok: true, text: `Created ${data.director.name}. Share the username and password with them.` });
@@ -65,9 +65,9 @@ export function DirectorAdminPanel({
 
   return (
     <section className="glass-card mb-6 rounded-[1.5rem] border border-white/[0.06] p-6">
-      <h2 className="text-sm font-semibold text-white">Directors</h2>
+      <h2 className="text-sm font-semibold text-white">Team members</h2>
       <p className="mt-1 text-xs text-[var(--text-muted)]">
-        Directors sign in with a username and password. No company email needed.
+        Team members sign in with a username and password. No company email needed.
       </p>
 
       <form onSubmit={createDirector} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -102,7 +102,7 @@ export function DirectorAdminPanel({
           />
         </label>
         <button type="submit" disabled={busy} className="glass-button-primary self-end px-4 py-2 text-sm">
-          {busy ? "Creating…" : "Add director"}
+          {busy ? "Creating…" : "Add team member"}
         </button>
       </form>
 

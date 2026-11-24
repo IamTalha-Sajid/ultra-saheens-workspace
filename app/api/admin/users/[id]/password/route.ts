@@ -36,7 +36,7 @@ export async function PATCH(
     { $set: { passwordHash: await hash(password, 12) } }
   );
   if (result.matchedCount === 0) {
-    return NextResponse.json({ error: "Director not found." }, { status: 404 });
+    return NextResponse.json({ error: "Team member not found." }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true });
