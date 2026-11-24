@@ -35,7 +35,7 @@ export function WorkspaceShell({
 
   return (
     <PagesProvider>
-      <div className="atmosphere-bg flex min-h-full flex-1 flex-col lg:flex-row">
+      <div className="atmosphere-bg flex h-dvh flex-col overflow-hidden lg:flex-row">
         {/* Mobile Header */}
         <div className="flex items-center justify-between border-b border-[var(--glass-border)] bg-[var(--surface-mid)] px-4 py-2.5 lg:hidden">
           <div className="flex items-center gap-3">
@@ -72,7 +72,7 @@ export function WorkspaceShell({
         {/* Sidebar Container */}
         <div 
           id="workspace-sidebar"
-          className={`fixed inset-y-0 left-0 z-[70] transition-transform duration-300 transform lg:static lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-[70] transition-transform duration-300 transform lg:static lg:h-full lg:translate-x-0 ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
@@ -93,7 +93,7 @@ export function WorkspaceShell({
           </Suspense>
         </div>
 
-        <div className="relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
           {children}
         </div>
       </div>
