@@ -1,0 +1,837 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "88821c2e-2788-4f5f-9e1c-95464e8f64b8",
+      "name": "Hourly Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 30,
+        "filters": {
+          "q": "in:inbox -label:VIP -label:AI-Priority -label:AI-Receipts -label:AI-Newsletters -label:AI-Review -label:AI-Bin"
+        }
+      },
+      "id": "f353ed77-33f6-48be-b046-c32138d3d871",
+      "name": "Fetch Unprocessed Inbox",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        864,
+        912
+      ],
+      "webhookId": "4b06dfd1-7a6f-44c7-888b-f0d72cb79f38",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = Date.now();\nconst DAY_MS = 24 * 60 * 60 * 1000;\n\n// ===== EDIT THESE =====\nconst VIP = ['yourboss@company.com', 'client.com'];      // exact addresses or domains -> always priority\nconst MUST_KEEP = /\\b(interview|offer letter|contract|deadline|overdue|appointment|visa|court|tax|salary|payment failed|action required)\\b/;\nconst BANK_SENDERS = /meezanbank\\.com/;                   // bank/payment sender domains\n// ======================\n\nreturn $input.all().map((item) => {\n  const msg = item.json;\n  const labels = msg.labelIds || [];\n  const isUnread = labels.includes('UNREAD');\n  const hasDate = !!msg.internalDate;\n  const ageDays = hasDate ? (now - Number(msg.internalDate)) / DAY_MS : 0;\n\n  const from = String(msg.From || msg.from || '').toLowerCase();\n  const subject = String(msg.Subject || msg.subject || '').toLowerCase();\n  const snippet = String(msg.snippet || '').toLowerCase();\n  const blob = `${from} ${subject} ${snippet}`;\n\n  const isPromo = labels.includes('CATEGORY_PROMOTIONS');\n  const isBulk = !!(msg['List-Unsubscribe'] || msg.listUnsubscribe)\n    || /no-?reply|do-?not-?reply|newsletter|mailer|notifications?@|marketing|updates?@/.test(from)\n    || labels.some(l => ['CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS'].includes(l));\n  const isPersonal = labels.some(l => ['IMPORTANT', 'STARRED', 'CATEGORY_PERSONAL'].includes(l));\n\n  const isVip = VIP.some(v => from.includes(v.toLowerCase()));\n  const isSecurityAlert = /\\b(fraud|unauthorized|suspicious login|new sign-in|new login|security alert|account locked|password reset)\\b/.test(blob);\n  const isOtp = /\\b(otp|one-time password|verification code|security code|2fa|login code)\\b/.test(blob);\n  const isBankOrPayment = BANK_SENDERS.test(from)\n    || /\\b(transaction alert|debit alert|credit alert|funds transfer|payment received|order confirmation|billing statement|your receipt|your invoice)\\b/.test(subject);\n\n  let fastAction = 'llm';\n  let fastReason = 'Requires LLM classification';\n\n  if (isVip) { fastAction = 'priority'; fastReason = 'VIP sender'; }\n  else if (isOtp) {\n    if (ageDays > 1) { fastAction = 'bin'; fastReason = 'Expired OTP (>24h)'; }\n    else { fastAction = 'priority'; fastReason = 'Fresh OTP'; }\n  }\n  else if (isSecurityAlert) {\n    if (ageDays > 5) { fastAction = 'archive_read'; fastReason = 'Old security alert (>5d)'; }\n    else { fastAction = 'priority'; fastReason = 'Fresh security alert'; }\n  }\n  else if (isBankOrPayment) { fastAction = 'receipts'; fastReason = 'Bank/payment sender or subject'; }\n  else if (MUST_KEEP.test(subject) && !isPromo) { fastAction = 'priority'; fastReason = 'Must-keep keyword in subject'; }\n  else if (isPromo) { fastAction = 'bin'; fastReason = 'Gmail Promotion -> AI/Bin (recoverable 7d)'; }\n  else if (labels.includes('CATEGORY_SOCIAL')) { fastAction = 'archive_read'; fastReason = 'Gmail Social'; }\n  else if (!isUnread && hasDate && ageDays > 14) { fastAction = 'archive_read'; fastReason = 'Read and older than 14 days'; }\n\n  return { json: { ...msg, cleanup: { fastAction, fastReason, ageDays: Math.round(ageDays * 10) / 10, isUnread, isBulk, isPersonal } } };\n});"
+      },
+      "id": "64775b77-e90a-4325-a93e-8ac8487ff2c9",
+      "name": "Deterministic Triage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.cleanup.fastAction }}",
+                    "rightValue": "priority",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0a3ec467-2268-412f-a81c-da072c571632"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "priority"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.cleanup.fastAction }}",
+                    "rightValue": "archive_read",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6eb21107-bff5-43da-95c0-b509e1f79456"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "archive_read"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.cleanup.fastAction }}",
+                    "rightValue": "receipts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "d3242367-5c18-4c81-9410-b9106d919d53"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "receipts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.cleanup.fastAction }}",
+                    "rightValue": "bin",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "52e1cf4e-5584-4fe4-871f-32536007be69"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "bin"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "99992504-6863-41a1-ab18-484e7db06b3e",
+      "name": "Pre-LLM Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1296,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=/no_think\nClassify this email. Allowed answers: {{ $json.cleanup.isBulk ? 'receipts, newsletters, clutter, review' : 'priority, review' }}.\n- priority: a real person writing to me, needs a reply or action\n- receipts: invoices, bills, payments, order confirmations\n- newsletters: digests or updates I subscribed to\n- clutter: ads, cold sales outreach, spam\n- review: unsure\n\nExamples:\nFrom: ali@client.com | Subject: Can we move the call to 3pm? -> {\"category\":\"priority\",\"reason\":\"person asks to reschedule\"}\nFrom: no-reply@store.com | Subject: 50% off today only -> {\"category\":\"clutter\",\"reason\":\"advert\"}\nFrom: news@substack.com | Subject: This week in AI -> {\"category\":\"newsletters\",\"reason\":\"digest\"}\nWhen unsure answer review.\n\nReturn ONLY JSON: {\"category\":\"...\",\"reason\":\"...\"}\n\nFrom: {{ $json.From || $json.from }}\nSubject: {{ $json.Subject || $json.subject }}\nSnippet: {{ String($json.snippet || '').slice(0, 300) }}"
+      },
+      "id": "aded90a4-5cb8-4898-b2df-a1ffd7e09bcb",
+      "name": "AI Email Classifier",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        1072
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "Qwen3.5-2B",
+          "mode": "list",
+          "cachedResultName": "Qwen3.5-2B"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1568,
+        1264
+      ],
+      "id": "bda800cb-0168-49bc-be9b-da604a343d2d",
+      "name": "Qwen3.5 2B",
+      "credentials": {
+        "openAiApi": {
+          "id": "hQ8HUdI3trobz2sD",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const valid = ['priority', 'receipts', 'newsletters', 'clutter', 'review'];\n\nreturn $input.all().map((item, i) => {\n  const orig = $('Pre-LLM Router').itemMatching(i).json;   // paired by lineage, not position\n  const raw = String(item.json.text ?? item.json.response ?? item.json.output ?? '')\n    .replace(/<think>[\\s\\S]*?<\\/think>/gi, '')\n    .replace(/```json|```/gi, '');\n\n  let cat = 'review';\n  let reason = 'parse fallback';\n  try {\n    const p = JSON.parse(raw.match(/\\{[\\s\\S]*\\}/)[0]);\n    cat = String(p.category || '').toLowerCase().trim();\n    reason = p.reason || '';\n  } catch (e) {}\n  if (!valid.includes(cat)) cat = 'review';\n\n  const c = orig.cleanup || {};\n  if (cat === 'priority' && c.isBulk) { cat = 'review'; reason += ' [guard: bulk sender cannot be priority]'; }\n  if ((cat === 'clutter' || cat === 'newsletters') && c.isPersonal) { cat = 'review'; reason += ' [guard: personal/important cannot be binned]'; }\n  if (cat === 'clutter' && !c.isBulk) { cat = 'review'; reason += ' [guard: human sender cannot be clutter]'; }\n\n  return { json: { ...orig, ai: { category: cat, reason } } };\n});"
+      },
+      "id": "b736a279-45e7-4514-a21b-fc7ae83b2b4a",
+      "name": "Parse & Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ai.category }}",
+                    "rightValue": "priority",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "28acb0e9-430a-453d-94bb-cabfb20ffb8e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "priority"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ai.category }}",
+                    "rightValue": "receipts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ab9176e1-b1f7-4c64-bcda-6c22d5e1d3fd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "receipts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ai.category }}",
+                    "rightValue": "newsletters",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6fe4d1ad-2096-495d-9bbb-1d2f798a73bc"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "newsletters"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.ai.category }}",
+                    "rightValue": "clutter",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cab0e03b-9075-4f24-94d4-c6e47f9c6989"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "clutter"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "dda3f1c1-79d9-42e6-b190-f83bcc79f1d7",
+      "name": "Route Category",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2080,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "INBOX",
+          "UNREAD"
+        ]
+      },
+      "id": "afa13508-193e-4f40-a951-c72c7695a364",
+      "name": "Clean Noise & Stale Read",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2368,
+        560
+      ],
+      "webhookId": "d023ad9e-87c6-4172-8a58-970d5b795aa6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_1511973546403897189"
+        ]
+      },
+      "id": "ee0c24bc-48af-483d-b77e-5094e01b8472",
+      "name": "Label Priority",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2368,
+        720
+      ],
+      "webhookId": "3f12c6d7-b694-4eab-a6c4-37fdff6878d5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_1637684757817830751"
+        ]
+      },
+      "id": "7fba4dfa-9f05-46da-a579-0134e90874cc",
+      "name": "Label Receipts",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2368,
+        880
+      ],
+      "webhookId": "ae283f7b-bff0-4579-9ed0-e104dee986ee",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "INBOX",
+          "UNREAD"
+        ]
+      },
+      "id": "7462e545-559b-44cd-ba64-76e9f03974f6",
+      "name": "Archive & Mark Read Receipts",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2576,
+        880
+      ],
+      "webhookId": "1839dca7-ac99-40e8-8cb7-afe9055390c7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_2436902081048129789"
+        ]
+      },
+      "id": "69b70b1b-fb12-41f2-8f96-0e23f439467f",
+      "name": "Label Newsletters",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2368,
+        1040
+      ],
+      "webhookId": "d20367ae-b04e-4236-805d-d320785812b1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "INBOX",
+          "UNREAD"
+        ]
+      },
+      "id": "27f5a4b5-fed1-425d-8f49-99ef8b57ef71",
+      "name": "Archive Newsletters",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2576,
+        1040
+      ],
+      "webhookId": "d4764cea-066b-4126-a6f7-205e87ab54cc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "REPLACE_WITH_AI_BIN_LABEL_ID"
+        ]
+      },
+      "id": "e47b0ec1-d90f-42b5-99ff-2363a1327c03",
+      "name": "Label Bin",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2368,
+        1200
+      ],
+      "webhookId": "fcaa2507-b742-4b55-ace6-1cc9c1f13278",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "INBOX",
+          "UNREAD"
+        ]
+      },
+      "id": "f3e57e59-0cc5-4750-923d-5baee0e3cd26",
+      "name": "Archive Bin",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2576,
+        1200
+      ],
+      "webhookId": "17e90078-8d65-4cf5-92b5-28a3a833fea6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_6280601758314569803"
+        ]
+      },
+      "id": "11987795-e648-4ad3-8b46-3e11eb82bd35",
+      "name": "Label Review",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2368,
+        1360
+      ],
+      "webhookId": "c2e485bd-a3cc-4e89-b1e9-293df7f11d08",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days"
+            }
+          ]
+        }
+      },
+      "id": "e4af9bdc-cd5c-4a59-8064-f0a784c28c8e",
+      "name": "Daily Bin Purge",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        1600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 100,
+        "filters": {
+          "q": "label:AI-Bin older_than:7d"
+        }
+      },
+      "id": "a23125d5-eccb-426e-a449-f8b11e5823ae",
+      "name": "Fetch Old Bin",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        864,
+        1600
+      ],
+      "webhookId": "6057ab00-5aed-4a5c-a9c3-358a9d573bb2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.id }}/trash",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {}
+      },
+      "id": "311da79b-639d-45ad-86ce-7a1ec02449a9",
+      "name": "Trash Old Bin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1088,
+        1600
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zFQ2uXPiZRcjWdKS",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Hourly Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch Unprocessed Inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Unprocessed Inbox": {
+      "main": [
+        [
+          {
+            "node": "Deterministic Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deterministic Triage": {
+      "main": [
+        [
+          {
+            "node": "Pre-LLM Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre-LLM Router": {
+      "main": [
+        [
+          {
+            "node": "Label Priority",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clean Noise & Stale Read",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label Receipts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label Bin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Email Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Email Classifier": {
+      "main": [
+        [
+          {
+            "node": "Parse & Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qwen3.5 2B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Email Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Guard": {
+      "main": [
+        [
+          {
+            "node": "Route Category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Category": {
+      "main": [
+        [
+          {
+            "node": "Label Priority",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label Receipts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label Newsletters",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label Bin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label Receipts": {
+      "main": [
+        [
+          {
+            "node": "Archive & Mark Read Receipts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label Newsletters": {
+      "main": [
+        [
+          {
+            "node": "Archive Newsletters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label Bin": {
+      "main": [
+        [
+          {
+            "node": "Archive Bin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Bin Purge": {
+      "main": [
+        [
+          {
+            "node": "Fetch Old Bin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Old Bin": {
+      "main": [
+        [
+          {
+            "node": "Trash Old Bin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
