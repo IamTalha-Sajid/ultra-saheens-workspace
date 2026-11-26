@@ -8,6 +8,7 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import { usePages, type PageCreator } from "./pages-context";
 import { buildPageTree, type PageTreeNode } from "./page-tree-utils";
 import { NotificationPanel } from "./notification-panel";
+import type { Board } from "@/lib/board";
 
 function pageCreatorLabel(c: PageCreator) {
   const n = c.name?.trim();
@@ -139,6 +140,12 @@ function TreeRows({
   );
 }
 
+// Remember the CXO's board in a cookie (read by the API), then reload so every view refetches.
+function switchBoard(next: Board, pathname: string) {
+  document.cookie = `board=${next}; path=/; max-age=31536000; samesite=lax`;
+  window.location.assign(pathname.startsWith("/app/board/ticket") ? "/app/board" : pathname);
+}
+
 export function PageSidebar({
   currentUserId,
   email,
@@ -146,8 +153,12 @@ export function PageSidebar({
   username,
   designation,
   role,
+  cxo,
+  board,
   onClose,
 }: {
+  cxo: boolean;
+  board: Board;
   currentUserId: string;
   email: string;
   displayName: string;
@@ -157,6 +168,7 @@ export function PageSidebar({
   onClose?: () => void;
 }) {
   const isDirector = role === "director";
+  const label = board === "team" ? "Team" : "Executive";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -252,11 +264,30 @@ export function PageSidebar({
         <div className="mb-5">
           <NavItem href="/app/welcome" label="Start here" icon="welcome" active={pathname === "/app/welcome"} onClick={onClose} />
         </div>
-        <p className="eyebrow mb-1 px-3 text-[var(--text-faint)]">Executive</p>
+        <p className="eyebrow mb-1 px-3 text-[var(--text-faint)]">{label}</p>
+        {cxo && (
+          <div className="mb-2 flex gap-1 px-1" role="group" aria-label="Switch board">
+            {(["executive", "team"] as const).map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => b !== board && switchBoard(b, pathname)}
+                aria-pressed={board === b}
+                className={`flex-1 rounded-sm border px-2 py-1 text-xs font-semibold capitalize transition-colors ${
+                  board === b
+                    ? "border-[var(--glass-border-bright)] bg-white/[0.06] text-[var(--text-primary)]"
+                    : "border-[var(--glass-border)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="mb-5 flex flex-col gap-0.5">
-          <NavItem href="/app/board" label="Executive Board" icon="board" active={pathname === "/app/board"} onClick={onClose} />
-          <NavItem href="/app/board/files" label="Executive Files" icon="files" active={pathname === "/app/board/files"} onClick={onClose} />
-          <NavItem href="/app/board/links" label="Executive Links" icon="links" active={pathname === "/app/board/links"} onClick={onClose} />
+          <NavItem href="/app/board" label={`${label} Board`} icon="board" active={pathname === "/app/board"} onClick={onClose} />
+          <NavItem href="/app/board/files" label={`${label} Files`} icon="files" active={pathname === "/app/board/files"} onClick={onClose} />
+          <NavItem href="/app/board/links" label={`${label} Links`} icon="links" active={pathname === "/app/board/links"} onClick={onClose} />
           {!isDirector && (
             <NavItem href="/app/merch" label="Executive Merch" icon="merch" active={pathname === "/app/merch"} onClick={onClose} />
           )}

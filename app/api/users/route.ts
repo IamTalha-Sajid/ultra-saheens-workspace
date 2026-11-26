@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth-api";
+import { NON_CXO_USER_FILTER } from "@/lib/board";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import User from "@/models/User";
@@ -9,7 +10,7 @@ export async function GET() {
   if (error) return error;
 
   await connectDB();
-  const users = await User.find({}, "name email username")
+  const users = await User.find(caller.cxo ? {} : NON_CXO_USER_FILTER, "name email username")
     .sort({ name: 1, email: 1 })
     .lean();
 

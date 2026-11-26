@@ -3,7 +3,7 @@ import { del } from "@vercel/blob";
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 import mongoose from "mongoose";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
 import { connectDB } from "@/lib/mongodb";
 import CommitteeUpload from "@/models/CommitteeUpload";
 
@@ -11,8 +11,8 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -22,7 +22,10 @@ export async function DELETE(
   }
 
   await connectDB();
-  const upload = await CommitteeUpload.findByIdAndDelete(new mongoose.Types.ObjectId(id)).lean();
+  const upload = await CommitteeUpload.findOneAndDelete({
+    _id: new mongoose.Types.ObjectId(id),
+    ...(user.cxo ? {} : { board: "team" }),
+  }).lean();
   if (!upload) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

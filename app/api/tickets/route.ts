@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
+import { boardFilter, resolveBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
@@ -69,16 +70,16 @@ function serializeTicket(
 
 export const GET = redactForDirectors(handleGET);
 async function handleGET(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const archivedParam = new URL(request.url).searchParams.get("archived");
-  const archived = archivedParam === "true";
+  const archived = new URL(request.url).searchParams.get("archived") === "true";
+  const board = await resolveBoard(user.cxo);
 
   await connectDB();
-  const tickets = await Ticket.find({ archived })
+  const tickets = await Ticket.find({ archived, ...boardFilter(board) })
     .sort({ createdAt: -1 })
     .populate("assigneeId", "name email username")
     .populate("assigneeIds", "name email username")
@@ -94,10 +95,11 @@ async function handleGET(request: Request) {
 
 export const POST = redactForDirectors(handlePOST);
 async function handlePOST(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = user.id;
 
   const body = (await request.json()) as {
     title?: string;
@@ -142,6 +144,7 @@ async function handlePOST(request: Request) {
     title,
     description: "",
     status,
+    board: await resolveBoard(user.cxo),
     creatorId: creatorOid,
     assigneeId: assigneeIds[0],
     assigneeIds,

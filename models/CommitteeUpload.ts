@@ -10,6 +10,7 @@ export interface CommitteeUploadDoc {
   mimeType: string;
   size: number;
   url: string;
+  board: "executive" | "team";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +26,7 @@ const CommitteeUploadSchema = new Schema<CommitteeUploadDoc>(
     mimeType: { type: String, required: true },
     size: { type: Number, required: true },
     url: { type: String, required: true },
+    board: { type: String, enum: ["executive", "team"], default: "executive", index: true },
   },
   { collection: "committee_uploads", timestamps: true }
 );

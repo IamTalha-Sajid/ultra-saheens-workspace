@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
+import { boardFilter, resolveBoard } from "@/lib/board";
 import { connectDB } from "@/lib/mongodb";
 import CommitteeFolder from "@/models/CommitteeFolder";
 
 export async function GET(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const parentId = searchParams.get("parentId");
@@ -15,9 +16,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "type must be 'file' or 'link'" }, { status: 400 });
 
   await connectDB();
+  const board = boardFilter(await resolveBoard(user.cxo));
   const filter = parentId
-    ? { type, parentId: new mongoose.Types.ObjectId(parentId) }
-    : { type, parentId: null };
+    ? { type, parentId: new mongoose.Types.ObjectId(parentId), ...board }
+    : { type, parentId: null, ...board };
 
   const folders = await CommitteeFolder.find(filter).sort({ name: 1 }).lean();
 
@@ -32,8 +34,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await request.json()) as { name?: string; parentId?: string | null; type?: string };
   const name = String(body.name ?? "").trim();
@@ -46,7 +48,8 @@ export async function POST(request: Request) {
     name,
     type: body.type,
     parentId: body.parentId ? new mongoose.Types.ObjectId(body.parentId) : null,
-    createdBy: new mongoose.Types.ObjectId(userId),
+    board: await resolveBoard(user.cxo),
+    createdBy: new mongoose.Types.ObjectId(user.id),
   });
 
   return NextResponse.json({

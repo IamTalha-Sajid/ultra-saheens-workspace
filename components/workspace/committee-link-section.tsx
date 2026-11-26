@@ -103,7 +103,7 @@ function displayHost(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
 }
 
-export function CommitteeLinkSection() {
+export function CommitteeLinkSection({ label = "Executive" }: { label?: string }) {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: null, name: "Links" }]);
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -285,7 +285,7 @@ export function CommitteeLinkSection() {
     <section className="mt-4 overflow-hidden rounded-xl border border-white/[0.08] bg-[var(--surface-mid)]">
       {/* Header */}
       <div className="border-b border-white/[0.07] px-4 py-4 md:px-5">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)] md:text-base">Executive Board Links</h2>
+        <h2 className="text-sm font-semibold text-[var(--text-primary)] md:text-base">{label} Board Links</h2>
         <p className="text-xs text-[var(--text-faint)]">Share links to Canva designs, Google Drive, reports, and more.</p>
       </div>
 

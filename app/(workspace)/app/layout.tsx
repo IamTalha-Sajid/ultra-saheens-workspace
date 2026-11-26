@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { getSessionBoard } from "@/lib/auth-api";
 import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 
@@ -9,9 +10,13 @@ export default async function WorkspaceLayout({
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  const access = await getSessionBoard();
+  if (!access) redirect("/login");
 
   return (
     <WorkspaceShell
+      cxo={access.cxo}
+      board={access.board}
       userId={session.user.id}
       email={session.user.email}
       role={session.user.role}

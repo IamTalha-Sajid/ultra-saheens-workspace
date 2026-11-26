@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
+import { canAccessBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
@@ -76,8 +77,8 @@ async function handleGET(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -95,7 +96,7 @@ async function handleGET(
     .populate("creatorId", "name email username")
     .lean();
 
-  if (!ticket) {
+  if (!ticket || !canAccessBoard(user.cxo, ticket.board)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -147,10 +148,11 @@ async function handlePATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = user.id;
 
   const { id } = await context.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -161,7 +163,7 @@ async function handlePATCH(
 
   await connectDB();
   const ticket = await Ticket.findById(new mongoose.Types.ObjectId(id));
-  if (!ticket) {
+  if (!ticket || !canAccessBoard(user.cxo, ticket.board)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -385,8 +387,8 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -397,7 +399,10 @@ export async function DELETE(
 
   await connectDB();
   const oid = new mongoose.Types.ObjectId(id);
-  const ticket = await Ticket.findByIdAndDelete(oid);
+  const ticket = await Ticket.findOneAndDelete({
+    _id: oid,
+    ...(user.cxo ? {} : { board: "team" }),
+  });
   if (!ticket) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

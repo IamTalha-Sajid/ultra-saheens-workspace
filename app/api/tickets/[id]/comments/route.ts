@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
+import { canAccessBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
@@ -25,10 +26,11 @@ async function handlePOST(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = user.id;
 
   const { id: ticketId } = await context.params;
   if (!mongoose.Types.ObjectId.isValid(ticketId)) {
@@ -43,8 +45,8 @@ async function handlePOST(
 
   await connectDB();
   const ticketOid = new mongoose.Types.ObjectId(ticketId);
-  const ticket = await Ticket.findById(ticketOid).select("title").lean();
-  if (!ticket) {
+  const ticket = await Ticket.findById(ticketOid).select("title board").lean();
+  if (!ticket || !canAccessBoard(user.cxo, ticket.board)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

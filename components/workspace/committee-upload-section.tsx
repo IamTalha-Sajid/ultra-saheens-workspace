@@ -114,7 +114,7 @@ function FileTypeIcon({ mime }: { mime: string }) {
   );
 }
 
-export function CommitteeUploadSection() {
+export function CommitteeUploadSection({ label = "Executive" }: { label?: string }) {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: null, name: "Files" }]);
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -528,7 +528,7 @@ export function CommitteeUploadSection() {
     >
       {/* Header */}
       <div className="border-b border-white/[0.07] px-4 py-4 md:px-5">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)] md:text-base">Executive Board Files</h2>
+        <h2 className="text-sm font-semibold text-[var(--text-primary)] md:text-base">{label} Board Files</h2>
         <p className="text-xs text-[var(--text-faint)]">Upload and organize files. Drag files anywhere to upload.</p>
       </div>
 

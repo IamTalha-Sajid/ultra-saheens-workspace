@@ -1,4 +1,4 @@
-const ALLOWED_DOMAIN = "ultrashaheens.com";
+export const ALLOWED_DOMAIN = "ultrashaheens.com";
 
 export function isAllowedEmail(email: string): boolean {
   const normalized = email.trim().toLowerCase();

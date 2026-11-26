@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import CommitteeLink from "@/models/CommitteeLink";
@@ -10,8 +10,8 @@ async function handlePATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await context.params;
   if (!mongoose.Types.ObjectId.isValid(id))
@@ -39,8 +39,8 @@ async function handlePATCH(
   }
 
   await connectDB();
-  const updated = await CommitteeLink.findByIdAndUpdate(
-    new mongoose.Types.ObjectId(id),
+  const updated = await CommitteeLink.findOneAndUpdate(
+    { _id: new mongoose.Types.ObjectId(id), ...(user.cxo ? {} : { board: "team" }) },
     { title, url, description, department },
     { new: true }
   )
@@ -77,15 +77,18 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await context.params;
   if (!mongoose.Types.ObjectId.isValid(id))
     return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await connectDB();
-  const deleted = await CommitteeLink.findByIdAndDelete(new mongoose.Types.ObjectId(id)).lean();
+  const deleted = await CommitteeLink.findOneAndDelete({
+    _id: new mongoose.Types.ObjectId(id),
+    ...(user.cxo ? {} : { board: "team" }),
+  }).lean();
   if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   return NextResponse.json({ ok: true });

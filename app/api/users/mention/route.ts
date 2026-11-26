@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { requireRole } from "@/lib/auth-api";
+import { NON_CXO_USER_FILTER } from "@/lib/board";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
   // Allow empty query to show all users for @ mentions
   if (q.length < 1) {
     await connectDB();
-    const users = await User.find({})
+    const users = await User.find(caller.cxo ? {} : NON_CXO_USER_FILTER)
       .select("name email username")
       .limit(12)
       .lean();
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
       caller.role === "director"
         ? [{ name: rx }, { username: rx }]
         : [{ name: rx }, { email: rx }, { username: rx }],
+    ...(caller.cxo ? {} : NON_CXO_USER_FILTER),
   })
     .select("name email username")
     .limit(12)

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { unlink } from "node:fs/promises";
 import path from "node:path";
 import mongoose from "mongoose";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
+import { canAccessBoard } from "@/lib/board";
 import { connectDB } from "@/lib/mongodb";
 import CommitteeFolder from "@/models/CommitteeFolder";
 import CommitteeUpload from "@/models/CommitteeUpload";
@@ -31,8 +32,8 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await context.params;
   if (!mongoose.Types.ObjectId.isValid(id))
@@ -43,7 +44,11 @@ export async function PATCH(
   if (!name) return NextResponse.json({ error: "Folder name is required" }, { status: 400 });
 
   await connectDB();
-  const folder = await CommitteeFolder.findByIdAndUpdate(id, { name }, { new: true }).lean();
+  const folder = await CommitteeFolder.findOneAndUpdate(
+    { _id: id, ...(user.cxo ? {} : { board: "team" }) },
+    { name },
+    { new: true }
+  ).lean();
   if (!folder) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   return NextResponse.json({
@@ -60,8 +65,8 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await context.params;
   if (!mongoose.Types.ObjectId.isValid(id))
@@ -69,7 +74,7 @@ export async function DELETE(
 
   await connectDB();
   const folder = await CommitteeFolder.findById(id).lean();
-  if (!folder) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!folder || !canAccessBoard(user.cxo, folder.board)) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await cascadeDelete(new mongoose.Types.ObjectId(id), folder.type);
 

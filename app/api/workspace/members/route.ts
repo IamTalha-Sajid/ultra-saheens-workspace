@@ -1,19 +1,24 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { requireRole } from "@/lib/auth-api";
+import { NON_CXO_USER_FILTER } from "@/lib/board";
 import User from "@/models/User";
 import Ticket from "@/models/Ticket";
 
 export async function GET() {
-    const { error } = await requireRole("admin", "member");
+    const { user: caller, error } = await requireRole("admin", "member");
     if (error) return error;
 
     await connectDB();
 
-    const users = await User.find({}, "name email username createdAt designation role").lean();
+    const users = await User.find(
+        caller.cxo ? {} : NON_CXO_USER_FILTER,
+        "name email username createdAt designation role"
+    ).lean();
+    const scope = caller.cxo ? {} : { board: "team" };
 
     const usersWithStats = await Promise.all(users.map(async (user) => {
-        const assigneeFilter = { $or: [{ assigneeIds: user._id }, { assigneeId: user._id }] };
+        const assigneeFilter = { $or: [{ assigneeIds: user._id }, { assigneeId: user._id }], ...scope };
         const ticketCount = await Ticket.countDocuments({ ...assigneeFilter, archived: false });
         const doneCount = await Ticket.countDocuments({ ...assigneeFilter, status: "Done", archived: false });
 
