@@ -26,11 +26,19 @@ export function boardLabel(board: Board): string {
   return board === "team" ? "Team" : "Executive";
 }
 
-/** Mongo filter matching only non-CXO users (what non-CXO callers may see, assign or mention). */
-export const NON_CXO_USER_FILTER = {
-  email: { $not: new RegExp(`@${ALLOWED_DOMAIN.replace(/\./g, "\\.")}$`, "i") },
-  username: { $nin: CXO_USERNAMES },
-};
+const CXO_EMAIL_RX = new RegExp(`@${ALLOWED_DOMAIN.replace(/\./g, "\\.")}$`, "i");
+
+const CXO_USER_FILTER = { $or: [{ email: CXO_EMAIL_RX }, { username: { $in: CXO_USERNAMES } }] };
+const NON_CXO_USER_FILTER = { email: { $not: CXO_EMAIL_RX }, username: { $nin: CXO_USERNAMES } };
+
+/**
+ * Mongo filter for the users who belong on a board (lists, pickers, assignees).
+ * Executive: CXOs only. Team: non-CXOs only, except CXO viewers see everyone.
+ */
+export function usersForBoard(board: Board, cxoViewer: boolean) {
+  if (board === "executive") return CXO_USER_FILTER;
+  return cxoViewer ? {} : NON_CXO_USER_FILTER;
+}
 
 /** Mongo filter for a board; records saved before boards existed count as executive. */
 export function boardFilter(board: Board): { board: Board } | { board: { $ne: "team" } } {

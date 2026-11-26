@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
 import { getSessionUser } from "@/lib/auth-api";
-import { canAccessBoard } from "@/lib/board";
+import { canAccessBoard, usersForBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
@@ -223,6 +223,7 @@ async function handlePATCH(
     ticket.archivedAt = nextArchived ? new Date() : undefined;
   }
 
+  const boardUsers = usersForBoard(ticket.board === "team" ? "team" : "executive", user.cxo);
   const nextAssigneeOid = parseAssigneeId(body.assigneeId);
   const nextAssigneeOids = parseAssigneeIds(body.assigneeIds);
 
@@ -231,10 +232,12 @@ async function handlePATCH(
       ticket.assigneeIds = [];
       ticket.set("assigneeId", undefined);
     } else {
-      const validUsers = await User.find({ _id: { $in: nextAssigneeOids } }).select("_id").lean();
+      const validUsers = await User.find({
+        $and: [{ _id: { $in: nextAssigneeOids } }, boardUsers],
+      }).select("_id").lean();
       const valid = new Set(validUsers.map((u) => String(u._id)));
       if (valid.size !== nextAssigneeOids.length) {
-        return NextResponse.json({ error: "One or more assignees not found" }, { status: 400 });
+        return NextResponse.json({ error: "One or more assignees not found on this board" }, { status: 400 });
       }
       ticket.assigneeIds = nextAssigneeOids;
       ticket.assigneeId = nextAssigneeOids[0];
@@ -245,9 +248,9 @@ async function handlePATCH(
       ticket.assigneeIds = [];
       ticket.set("assigneeId", undefined);
     } else {
-      const u = await User.findById(nextAssigneeOid).select("_id").lean();
+      const u = await User.findOne({ $and: [{ _id: nextAssigneeOid }, boardUsers] }).select("_id").lean();
       if (!u) {
-        return NextResponse.json({ error: "Assignee not found" }, { status: 400 });
+        return NextResponse.json({ error: "Assignee not found on this board" }, { status: 400 });
       }
       ticket.assigneeId = nextAssigneeOid;
       ticket.assigneeIds = [nextAssigneeOid];

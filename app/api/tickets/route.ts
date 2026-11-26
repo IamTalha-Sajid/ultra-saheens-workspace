@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getSessionUser } from "@/lib/auth-api";
-import { boardFilter, resolveBoard } from "@/lib/board";
+import { boardFilter, resolveBoard, usersForBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import Ticket from "@/models/Ticket";
 import type { TicketDoc } from "@/models/Ticket";
 import Counter from "@/models/Counter";
-import "@/models/User"; // ensure User schema is registered for populate()
+import User from "@/models/User"; // also registers the User schema for populate()
 
 type PopulatedUser = {
   _id: mongoose.Types.ObjectId;
@@ -130,6 +130,15 @@ async function handlePOST(request: Request) {
   }
 
   await connectDB();
+  const board = await resolveBoard(user.cxo);
+  if (assigneeIds.length > 0) {
+    const eligible = await User.countDocuments({
+      $and: [{ _id: { $in: assigneeIds } }, usersForBoard(board, user.cxo)],
+    });
+    if (eligible !== assigneeIds.length) {
+      return NextResponse.json({ error: "One or more assignees do not belong to this board" }, { status: 400 });
+    }
+  }
   const creatorOid = new mongoose.Types.ObjectId(userId);
 
   // Get next sequence ID
@@ -144,7 +153,7 @@ async function handlePOST(request: Request) {
     title,
     description: "",
     status,
-    board: await resolveBoard(user.cxo),
+    board,
     creatorId: creatorOid,
     assigneeId: assigneeIds[0],
     assigneeIds,

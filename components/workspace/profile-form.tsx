@@ -322,14 +322,13 @@ export function ProfileForm({ initial }: { initial: ProfilePayload }) {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="glass-input mt-1.5"
+                readOnly
+                className="glass-input mt-1.5 opacity-60"
                 autoComplete="email"
                 aria-label="Email"
               />
               <span className="mt-1 block text-xs text-[var(--text-muted)] opacity-80">
-                Must stay an @ultrashaheens.com address. Changing email requires your
-                current password.
+                Your email cannot be changed.
               </span>
             </label>
             )}
