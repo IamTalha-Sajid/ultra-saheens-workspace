@@ -5,6 +5,7 @@ export interface CommitteeFolderDoc {
   type: "file" | "link";
   parentId: Types.ObjectId | null;
   createdBy: Types.ObjectId;
+  board: "executive" | "team";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +16,7 @@ const CommitteeFolderSchema = new Schema<CommitteeFolderDoc>(
     type: { type: String, enum: ["file", "link"], required: true, index: true },
     parentId: { type: Schema.Types.ObjectId, ref: "CommitteeFolder", default: null, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    board: { type: String, enum: ["executive", "team"], default: "executive", index: true },
   },
   { collection: "committee_folders", timestamps: true }
 );

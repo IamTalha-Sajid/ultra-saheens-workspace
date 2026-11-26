@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
+import { boardFilter, resolveBoard, usersForBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
 import Ticket from "@/models/Ticket";
 import type { TicketDoc } from "@/models/Ticket";
 import Counter from "@/models/Counter";
-import "@/models/User"; // ensure User schema is registered for populate()
+import User from "@/models/User"; // also registers the User schema for populate()
 
 type PopulatedUser = {
   _id: mongoose.Types.ObjectId;
@@ -69,16 +70,16 @@ function serializeTicket(
 
 export const GET = redactForDirectors(handleGET);
 async function handleGET(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const archivedParam = new URL(request.url).searchParams.get("archived");
-  const archived = archivedParam === "true";
+  const archived = new URL(request.url).searchParams.get("archived") === "true";
+  const board = await resolveBoard(user.cxo);
 
   await connectDB();
-  const tickets = await Ticket.find({ archived })
+  const tickets = await Ticket.find({ archived, ...boardFilter(board) })
     .sort({ createdAt: -1 })
     .populate("assigneeId", "name email username")
     .populate("assigneeIds", "name email username")
@@ -94,10 +95,11 @@ async function handleGET(request: Request) {
 
 export const POST = redactForDirectors(handlePOST);
 async function handlePOST(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = user.id;
 
   const body = (await request.json()) as {
     title?: string;
@@ -128,6 +130,15 @@ async function handlePOST(request: Request) {
   }
 
   await connectDB();
+  const board = await resolveBoard(user.cxo);
+  if (assigneeIds.length > 0) {
+    const eligible = await User.countDocuments({
+      $and: [{ _id: { $in: assigneeIds } }, usersForBoard(board, user.cxo)],
+    });
+    if (eligible !== assigneeIds.length) {
+      return NextResponse.json({ error: "One or more assignees do not belong to this board" }, { status: 400 });
+    }
+  }
   const creatorOid = new mongoose.Types.ObjectId(userId);
 
   // Get next sequence ID
@@ -142,6 +153,7 @@ async function handlePOST(request: Request) {
     title,
     description: "",
     status,
+    board,
     creatorId: creatorOid,
     assigneeId: assigneeIds[0],
     assigneeIds,

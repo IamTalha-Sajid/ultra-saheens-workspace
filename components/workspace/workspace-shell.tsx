@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { PagesProvider } from "./pages-context";
 import { PageSidebar } from "./page-sidebar";
+import type { Board } from "@/lib/board";
 
 export function WorkspaceShell({
   userId,
@@ -12,8 +13,12 @@ export function WorkspaceShell({
   username,
   designation,
   role,
+  cxo,
+  board,
   children,
 }: {
+  cxo: boolean;
+  board: Board;
   userId: string;
   email: string;
   displayName: string;
@@ -88,6 +93,8 @@ export function WorkspaceShell({
               username={username}
               designation={designation}
               role={role}
+              cxo={cxo}
+              board={board}
               onClose={() => setIsSidebarOpen(false)}
             />
           </Suspense>

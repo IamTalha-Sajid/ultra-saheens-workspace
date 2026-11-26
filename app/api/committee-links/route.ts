@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
+import { boardFilter, resolveBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import CommitteeLink from "@/models/CommitteeLink";
@@ -20,16 +21,17 @@ function uploaderToJson(raw: unknown): { _id: string; name: string; email: strin
 
 export const GET = redactForDirectors(handleGET);
 async function handleGET(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const folderIdParam = searchParams.get("folderId");
+  const board = boardFilter(await resolveBoard(user.cxo));
 
   await connectDB();
   const filter = folderIdParam
-    ? { folderId: new mongoose.Types.ObjectId(folderIdParam) }
-    : { $or: [{ folderId: null }, { folderId: { $exists: false } }] };
+    ? { folderId: new mongoose.Types.ObjectId(folderIdParam), ...board }
+    : { $or: [{ folderId: null }, { folderId: { $exists: false } }], ...board };
 
   const rows = await CommitteeLink.find(filter)
     .populate("userId", "name email username")
@@ -53,8 +55,9 @@ async function handleGET(request: Request) {
 
 export const POST = redactForDirectors(handlePOST);
 async function handlePOST(request: Request) {
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = user.id;
 
   const body = (await request.json()) as {
     title?: string;
@@ -85,6 +88,7 @@ async function handlePOST(request: Request) {
   const created = await CommitteeLink.create({
     userId: new mongoose.Types.ObjectId(userId),
     folderId,
+    board: await resolveBoard(user.cxo),
     title,
     url,
     description,

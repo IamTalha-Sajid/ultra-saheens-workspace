@@ -12,6 +12,7 @@ export interface TicketDoc extends Document {
     assigneeId?: Types.ObjectId;
     assigneeIds: Types.ObjectId[];
     creatorId: Types.ObjectId;
+    board: "executive" | "team";
     archived: boolean;
     archivedAt?: Date;
     doneAt?: Date;
@@ -44,6 +45,7 @@ const TicketSchema = new Schema<TicketDoc>(
         assigneeId: { type: Schema.Types.ObjectId, ref: "User" },
         assigneeIds: { type: [{ type: Schema.Types.ObjectId, ref: "User" }], default: [] },
         creatorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        board: { type: String, enum: ["executive", "team"], default: "executive", index: true },
         archived: { type: Boolean, default: false },
         archivedAt: { type: Date },
         doneAt: { type: Date },

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
-import { getSessionUserId } from "@/lib/auth-api";
+import { getSessionUser } from "@/lib/auth-api";
+import { canAccessBoard, usersForBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
@@ -76,8 +77,8 @@ async function handleGET(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -95,7 +96,7 @@ async function handleGET(
     .populate("creatorId", "name email username")
     .lean();
 
-  if (!ticket) {
+  if (!ticket || !canAccessBoard(user.cxo, ticket.board)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -147,10 +148,11 @@ async function handlePATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = user.id;
 
   const { id } = await context.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -161,7 +163,7 @@ async function handlePATCH(
 
   await connectDB();
   const ticket = await Ticket.findById(new mongoose.Types.ObjectId(id));
-  if (!ticket) {
+  if (!ticket || !canAccessBoard(user.cxo, ticket.board)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -221,6 +223,7 @@ async function handlePATCH(
     ticket.archivedAt = nextArchived ? new Date() : undefined;
   }
 
+  const boardUsers = usersForBoard(ticket.board === "team" ? "team" : "executive", user.cxo);
   const nextAssigneeOid = parseAssigneeId(body.assigneeId);
   const nextAssigneeOids = parseAssigneeIds(body.assigneeIds);
 
@@ -229,10 +232,12 @@ async function handlePATCH(
       ticket.assigneeIds = [];
       ticket.set("assigneeId", undefined);
     } else {
-      const validUsers = await User.find({ _id: { $in: nextAssigneeOids } }).select("_id").lean();
+      const validUsers = await User.find({
+        $and: [{ _id: { $in: nextAssigneeOids } }, boardUsers],
+      }).select("_id").lean();
       const valid = new Set(validUsers.map((u) => String(u._id)));
       if (valid.size !== nextAssigneeOids.length) {
-        return NextResponse.json({ error: "One or more assignees not found" }, { status: 400 });
+        return NextResponse.json({ error: "One or more assignees not found on this board" }, { status: 400 });
       }
       ticket.assigneeIds = nextAssigneeOids;
       ticket.assigneeId = nextAssigneeOids[0];
@@ -243,9 +248,9 @@ async function handlePATCH(
       ticket.assigneeIds = [];
       ticket.set("assigneeId", undefined);
     } else {
-      const u = await User.findById(nextAssigneeOid).select("_id").lean();
+      const u = await User.findOne({ $and: [{ _id: nextAssigneeOid }, boardUsers] }).select("_id").lean();
       if (!u) {
-        return NextResponse.json({ error: "Assignee not found" }, { status: 400 });
+        return NextResponse.json({ error: "Assignee not found on this board" }, { status: 400 });
       }
       ticket.assigneeId = nextAssigneeOid;
       ticket.assigneeIds = [nextAssigneeOid];
@@ -316,9 +321,9 @@ async function handlePATCH(
 
     if (addedIds.length > 0) {
       const oids = addedIds.map((mid) => new mongoose.Types.ObjectId(mid));
-      const validUsers = await User.find({ _id: { $in: oids } }).select("_id").lean();
+      const validUsers = await User.find({ $and: [{ _id: { $in: oids } }, boardUsers] }).select("_id").lean();
       const valid = new Set(validUsers.map((u) => String(u._id)));
-      
+
       const session = await auth();
       const actorName = session?.user?.name?.trim() || session?.user?.email?.trim() || "Someone";
 
@@ -385,8 +390,8 @@ export async function DELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -397,7 +402,10 @@ export async function DELETE(
 
   await connectDB();
   const oid = new mongoose.Types.ObjectId(id);
-  const ticket = await Ticket.findByIdAndDelete(oid);
+  const ticket = await Ticket.findOneAndDelete({
+    _id: oid,
+    ...(user.cxo ? {} : { board: "team" }),
+  });
   if (!ticket) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

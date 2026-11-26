@@ -1,14 +1,17 @@
 import { KanbanBoard } from "@/components/workspace/kanban-board";
+import { getSessionBoard } from "@/lib/auth-api";
+import { boardLabel } from "@/lib/board";
 
 import { PageHeader } from "@/components/ui/page-header";
 
-export const metadata = { title: "Executive Board - Ultra Shaheens" };
+export const metadata = { title: "Board - Ultra Shaheens" };
 
-export default function BoardPage() {
+export default async function BoardPage() {
+    const access = await getSessionBoard();
     return (
         <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
             <PageHeader
-                title="Executive Board"
+                title={`${boardLabel(access?.board ?? "team")} Board`}
                 description={<>
                     Track tasks across <span className="text-neutral">Todo</span>, <span className="text-warn">In Progress</span>, <span className="text-danger">Blocked</span>, and <span className="text-ok">Done</span>. Done tasks auto-archive after 1 week.
                 </>}

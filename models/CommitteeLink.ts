@@ -7,6 +7,7 @@ export interface CommitteeLinkDoc {
   url: string;
   description: string;
   department: string;
+  board: "executive" | "team";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +20,7 @@ const CommitteeLinkSchema = new Schema<CommitteeLinkDoc>(
     url: { type: String, required: true, trim: true, maxlength: 2000 },
     description: { type: String, default: "", trim: true, maxlength: 500 },
     department: { type: String, default: "", trim: true, maxlength: 100 },
+    board: { type: String, enum: ["executive", "team"], default: "executive", index: true },
   },
   { collection: "committee_links", timestamps: true }
 );

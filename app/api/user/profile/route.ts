@@ -99,6 +99,11 @@ export async function PATCH(request: Request) {
     }
   }
 
+  // The email decides CXO access, so it is fixed at registration and can't be edited here.
+  if (wantsEmail) {
+    return NextResponse.json({ error: "Email can't be changed." }, { status: 403 });
+  }
+
   if (
     !wantsName &&
     !wantsUsername &&
