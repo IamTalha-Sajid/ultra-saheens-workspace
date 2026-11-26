@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { auth } from "@/auth";
 import { getSessionUser } from "@/lib/auth-api";
-import { canAccessBoard } from "@/lib/board";
+import { canAccessBoard, usersForBoard } from "@/lib/board";
 import { redactForDirectors } from "@/lib/redact-emails";
 import { connectDB } from "@/lib/mongodb";
 import { userToJson } from "@/lib/api/user-json";
@@ -76,7 +76,8 @@ async function handlePOST(
   );
   if (mentionedIds.length > 0) {
     const oids = mentionedIds.map((mid) => new mongoose.Types.ObjectId(mid));
-    const validUsers = await User.find({ _id: { $in: oids } })
+    const boardUsers = usersForBoard(ticket.board === "team" ? "team" : "executive", user.cxo);
+    const validUsers = await User.find({ $and: [{ _id: { $in: oids } }, boardUsers] })
       .select("_id")
       .lean();
     const valid = new Set(validUsers.map((u) => String(u._id)));

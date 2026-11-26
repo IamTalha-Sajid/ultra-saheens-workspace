@@ -321,9 +321,9 @@ async function handlePATCH(
 
     if (addedIds.length > 0) {
       const oids = addedIds.map((mid) => new mongoose.Types.ObjectId(mid));
-      const validUsers = await User.find({ _id: { $in: oids } }).select("_id").lean();
+      const validUsers = await User.find({ $and: [{ _id: { $in: oids } }, boardUsers] }).select("_id").lean();
       const valid = new Set(validUsers.map((u) => String(u._id)));
-      
+
       const session = await auth();
       const actorName = session?.user?.name?.trim() || session?.user?.email?.trim() || "Someone";
 
